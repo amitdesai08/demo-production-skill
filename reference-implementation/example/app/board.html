@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Northwind Tasks — Board</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">Northwind Tasks</div>
+    <nav class="nav">
+      <a href="index.html">Dashboard</a>
+      <a href="board.html" class="active">Board</a>
+      <a href="team.html">Team</a>
+    </nav>
+    <div class="spacer"></div>
+    <button class="btn-primary">+ New task</button>
+  </header>
+
+  <main class="content">
+    <h1>Board</h1>
+    <p class="page-sub">The same work, laid out by stage instead of urgency.</p>
+
+    <div class="board">
+      <div class="col">
+        <h3>Backlog</h3>
+        <div class="task-card">
+          <div class="task-title">Q3 roadmap review</div>
+          <div class="task-meta"><span>Sam Okafor</span><span>Sep 2</span></div>
+        </div>
+        <div class="task-card">
+          <div class="task-title">Refresh brand guidelines</div>
+          <div class="task-meta"><span>Dana Ortiz</span><span>Sep 5</span></div>
+        </div>
+      </div>
+
+      <div class="col">
+        <h3>In Progress</h3>
+        <a class="task-card" href="task.html">
+          <div class="task-title">Redesign onboarding flow</div>
+          <div class="task-meta"><span>Priya Shah</span><span>Fri, Aug 21</span></div>
+        </a>
+        <div class="task-card">
+          <div class="task-title">API rate-limit fix</div>
+          <div class="task-meta"><span>Marcus Lee</span><span>Blocked</span></div>
+        </div>
+      </div>
+
+      <div class="col">
+        <h3>Review</h3>
+        <div class="task-card">
+          <div class="task-title">Update pricing page</div>
+          <div class="task-meta"><span>Dana Ortiz</span><span>Aug 19</span></div>
+        </div>
+        <div class="task-card">
+          <div class="task-title">Mobile nav polish</div>
+          <div class="task-meta"><span>Sam Okafor</span><span>Aug 20</span></div>
+        </div>
+      </div>
+
+      <div class="col">
+        <h3>Done</h3>
+        <div class="task-card">
+          <div class="task-title">Fix invoice export bug</div>
+          <div class="task-meta"><span>Marcus Lee</span><span>Aug 14</span></div>
+        </div>
+        <div class="task-card">
+          <div class="task-title">Write Q2 retro notes</div>
+          <div class="task-meta"><span>Priya Shah</span><span>Aug 12</span></div>
+        </div>
+      </div>
+    </div>
+  </main>
+</body>
+</html>

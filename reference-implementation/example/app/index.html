@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Northwind Tasks — Dashboard</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">Northwind Tasks</div>
+    <nav class="nav">
+      <a href="index.html" class="active">Dashboard</a>
+      <a href="board.html">Board</a>
+      <a href="team.html">Team</a>
+    </nav>
+    <div class="spacer"></div>
+    <button class="btn-primary">+ New task</button>
+  </header>
+
+  <main class="content">
+    <h1>Dashboard</h1>
+    <p class="page-sub">Where the team starts every morning.</p>
+
+    <div class="kpi-grid">
+      <div class="kpi-card"><div class="kpi-value">18</div><div class="kpi-label">Open tasks</div></div>
+      <div class="kpi-card"><div class="kpi-value">6</div><div class="kpi-label">Due this week</div></div>
+      <div class="kpi-card"><div class="kpi-value">11</div><div class="kpi-label">Completed this week</div></div>
+      <div class="kpi-card"><div class="kpi-value">92%</div><div class="kpi-label">Team velocity</div></div>
+    </div>
+
+    <div class="panel">
+      <h2>What needs attention</h2>
+      <div class="attn-row">
+        <span class="dot overdue"></span>
+        <div class="attn-main">
+          <div class="attn-title">Vendor contract review</div>
+          <div class="attn-sub">Overdue by 2 days</div>
+        </div>
+        <span class="assignee-pill">Priya Shah</span>
+      </div>
+      <div class="attn-row">
+        <span class="dot blocked"></span>
+        <div class="attn-main">
+          <div class="attn-title">API rate-limit fix</div>
+          <div class="attn-sub">Blocked on infra team</div>
+        </div>
+        <span class="assignee-pill">Marcus Lee</span>
+      </div>
+      <div class="attn-row">
+        <span class="dot waiting"></span>
+        <div class="attn-main">
+          <div class="attn-title">Client onboarding doc</div>
+          <div class="attn-sub">Waiting on legal review</div>
+        </div>
+        <span class="assignee-pill">Dana Ortiz</span>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2>Recent activity</h2>
+      <div class="activity-row">Priya Shah commented on <strong>Redesign onboarding flow</strong></div>
+      <div class="activity-row">Marcus Lee moved <strong>API rate-limit fix</strong> to In Progress</div>
+      <div class="activity-row">Dana Ortiz completed <strong>Update pricing page</strong></div>
+      <div class="activity-row">Sam Okafor created <strong>Q3 roadmap review</strong></div>
+    </div>
+  </main>
+</body>
+</html>

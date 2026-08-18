@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Northwind Tasks — Redesign onboarding flow</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">Northwind Tasks</div>
+    <nav class="nav">
+      <a href="index.html">Dashboard</a>
+      <a href="board.html" class="active">Board</a>
+      <a href="team.html">Team</a>
+    </nav>
+    <div class="spacer"></div>
+    <button class="btn-primary">+ New task</button>
+  </header>
+
+  <main class="content">
+    <div class="task-header">
+      <h1>Redesign onboarding flow</h1>
+      <span class="badge progress">In Progress</span>
+    </div>
+    <p class="task-meta-row">Assigned to Priya Shah · Due Fri, Aug 21</p>
+
+    <div class="panel">
+      <h2>Description</h2>
+      <p>Simplify the first-run flow from six steps down to three, and add a progress
+        indicator. Based on feedback from last month's user survey.</p>
+    </div>
+
+    <div class="panel">
+      <h2>Checklist</h2>
+      <ul class="checklist">
+        <li class="done"><span class="check-box checked"></span> Audit current six-step flow</li>
+        <li class="done"><span class="check-box checked"></span> Draft new three-step flow</li>
+        <li><span class="check-box"></span> Build progress indicator component</li>
+        <li><span class="check-box"></span> Usability test with five users</li>
+      </ul>
+    </div>
+
+    <div class="panel">
+      <h2>Comments</h2>
+      <div class="comment">
+        <div class="avatar">ML</div>
+        <div>
+          <div class="comment-author">Marcus Lee</div>
+          <div class="comment-text">Love the three-step direction. Can we keep a skip option for power users?</div>
+        </div>
+      </div>
+      <div class="comment">
+        <div class="avatar">PS</div>
+        <div>
+          <div class="comment-author">Priya Shah</div>
+          <div class="comment-text">Yes — adding that back in today.</div>
+        </div>
+      </div>
+    </div>
+  </main>
+</body>
+</html>
