@@ -1,6 +1,6 @@
 ---
 name: demo-production
-description: 'Build a narrated, click-through product demo (a full walkthrough, a short lightning cut, and a denser delivery runbook), or refresh/improve an existing one. Use when asked to: build a demo, create a product walkthrough, record a narrated demo video, add a lightning/short cut, add a delivery runbook, produce a click-through demo, add or fix voiceover/narration for a demo, calibrate demo narration quality, or set up a demo capture-narrate-build pipeline for a new project.'
+description: 'Build a narrated, click-through product demo (a full walkthrough, a short lightning cut, and a denser delivery runbook), or refresh/improve an existing one. Use when asked to: build a demo, create a product walkthrough, record a narrated demo video, add a lightning/short cut, add a delivery runbook, produce a click-through demo, add or fix voiceover/narration for a demo, calibrate demo narration quality, fix blurry or low-resolution demo screenshots, verify demo capture resolution, or set up a demo capture-narrate-build pipeline for a new project.'
 ---
 
 # Demo production
@@ -17,15 +17,17 @@ needs them.
 
 ## What "high quality" means here, concretely
 
-This isn't a vague aspiration — it decomposes into four specific, checkable things:
+This isn't a vague aspiration — it decomposes into five specific, checkable things:
 
-1. **The narration sounds like a person, not a document being read aloud.** This is measured,
+1. **Screenshots are captured at real resolution, not whatever an embedded browser happened to
+   render.** This is measured, not eyeballed — see [`references/capture-quality.md`](references/capture-quality.md).
+2. **The narration sounds like a person, not a document being read aloud.** This is measured,
    not judged by ear — see [`references/narration-style.md`](references/narration-style.md).
-2. **Every claim is grounded in something the product actually does**, never an invented
+3. **Every claim is grounded in something the product actually does**, never an invented
    statistic or an unverifiable percentage.
-3. **Each audience gets its own story**, told in the vocabulary and about the value that
+4. **Each audience gets its own story**, told in the vocabulary and about the value that
    audience actually cares about — see [`references/new-track-guide.md`](references/new-track-guide.md).
-4. **Three complementary assets, not one** — a full walkthrough, a short cut, and a runbook for
+5. **Three complementary assets, not one** — a full walkthrough, a short cut, and a runbook for
    a presenter who isn't the demo's author. See the model below.
 
 ## The three-asset model
@@ -45,7 +47,11 @@ Each asset is: a scene manifest (fresh capture) or a cut definition (reused fram
    `reference-implementation/` into your project (or point at it directly), follow
    `reference-implementation/CONFIGURE.md` to wire up your product's URL, any auth it needs,
    an Azure AI Speech resource, and ffmpeg. Capture one trivial scene end-to-end to prove the
-   pipeline works before investing in real content.
+   pipeline works before investing in real content — and check that scene's screenshot came
+   out at the real, calibrated resolution (see
+   [`references/capture-quality.md`](references/capture-quality.md)), not a small or blurry
+   capture from an embedded browser panel. Catching a resolution problem on one throwaway
+   scene is free; catching it after capturing all 17 scenes of a real walkthrough is not.
 2. **Research the audience's real value proposition.** Don't guess. Ground every claim in a
    concrete, verifiable fact about the product — a real enforcement mechanism, a real screen, a
    real workflow — never an invented feature or a plausible-sounding capability that doesn't
@@ -89,19 +95,24 @@ Each asset is: a scene manifest (fresh capture) or a cut definition (reused fram
 
 These are a memory jog only — each is covered in full, with the exact fix, in the linked file.
 
-1. The capture engine, with no `--manifest` flag, wipes the **entire** screenshots folder
+1. **An embedded/IDE browser panel renders at its own small, fixed size no matter what CSS or
+   viewport settings you set** — screenshots taken from one are permanently low-resolution.
+   Capture always launches its own separate, real browser process instead, and the resolution
+   is controlled explicitly, not inherited from whatever window happened to be open. →
+   [`capture-quality.md`](references/capture-quality.md)
+2. The capture engine, with no `--manifest` flag, wipes the **entire** screenshots folder
    first, including every other manifest's screenshots. →
    [`pipeline-reference.md`](references/pipeline-reference.md)
-2. Narration caching is by **file existence**, not by content — an edited scene silently keeps
+3. Narration caching is by **file existence**, not by content — an edited scene silently keeps
    its old audio unless you pass `--force`. → [`pipeline-reference.md`](references/pipeline-reference.md)
-3. Only the step verbs in [`scene-schema.md`](references/scene-schema.md) exist in the core
+4. Only the step verbs in [`scene-schema.md`](references/scene-schema.md) exist in the core
    engine; anything product-specific must be added as a `CUSTOM_STEPS` entry in your own scenes
    file, never by forking the engine.
-4. Narration quality is measured, not judged by ear — an em-dash becomes a forced pause in the
+5. Narration quality is measured, not judged by ear — an em-dash becomes a forced pause in the
    synthesised audio, so em-dash density and contraction density per scene are the two concrete
    numbers that separate natural-sounding narration from a stilted read-aloud. →
    [`narration-style.md`](references/narration-style.md)
-5. A UI element only reads as present if it's **actually rendered for the exact state** the
+6. A UI element only reads as present if it's **actually rendered for the exact state** the
    scene captures — many product screens only render once matching data already exists. Verify
    the real on-screen text and conditions in the product's own source before writing a
    `scrollTo`/`spotlight` spec against it. → [`scene-schema.md`](references/scene-schema.md)
@@ -112,6 +123,7 @@ These are a memory jog only — each is covered in full, with the exact fix, in 
 demo-production/
 ├── SKILL.md                          you are here
 ├── references/
+│   ├── capture-quality.md             the calibrated screenshot-resolution bar and how to verify it
 │   ├── scene-schema.md               generic step vocabulary + the CUSTOM_STEPS extension point
 │   ├── narration-style.md            the measurable natural-speech calibration bar
 │   ├── new-track-guide.md            audience research + the three-document markdown template

@@ -1,6 +1,6 @@
 # Configuring the reference implementation for your product
 
-Everything in this folder is generic except the four things below — check each one before your
+Everything in this folder is generic except the five things below — check each one before your
 first capture. Nothing here reads or depends on any specific product; you are the one wiring it
 to yours.
 
@@ -41,6 +41,18 @@ Optional tuning, all with sensible defaults: `DEMO_VOICE` (a specific neural voi
 `build-video.mjs` needs `ffmpeg` and `ffprobe` on `PATH`, or `DEMO_FFMPEG` / `DEMO_FFPROBE`
 pointing at a portable build. Nothing else in this folder needs it — `capture.mjs`,
 `narrate.mjs` and `build-player.mjs` have no native dependency at all.
+
+## 5. Screenshot resolution — verify it, don't just trust the defaults
+
+The defaults (`DEMO_WIDTH=1440`, `DEMO_HEIGHT=900`, `DEMO_SCALE=2`, producing a 2880×1800
+physical-pixel capture) are calibrated to look sharp in the interactive player, the rendered
+MP4, and projected in a live room — you shouldn't need to change them. But **the first time you
+run a capture in a new environment, check the actual output dimensions of one screenshot**
+rather than assuming they came out right — see
+[`../skill/references/capture-quality.md`](../skill/references/capture-quality.md) for exactly
+why this matters (the short version: an embedded/IDE browser panel silently caps resolution no
+matter what you set, and this pipeline exists specifically to avoid ever capturing from one)
+and the one-line PowerShell command to verify it.
 
 ## Node version
 

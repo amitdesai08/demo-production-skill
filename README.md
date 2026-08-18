@@ -17,6 +17,7 @@ demo-production-skill/
 ├── skill/                      the Copilot skill itself
 │   ├── SKILL.md
 │   └── references/
+│       ├── capture-quality.md
 │       ├── scene-schema.md
 │       ├── narration-style.md
 │       ├── new-track-guide.md

@@ -15,6 +15,10 @@ running it from wherever you placed it) and followed `reference-implementation/C
   — only `build-video.mjs` needs this; nothing else in the pipeline does.
 - **Whatever auth your product itself needs** for the capture browser session — see the
   `DEMO_AUTH_HEADER` mechanism in `CONFIGURE.md`.
+- **A real, separately-launched browser for capture — never an IDE's embedded/simple browser.**
+  This is what the pipeline already does by design (see
+  [`capture-quality.md`](capture-quality.md)); the prerequisite is just don't try to point
+  `DEMO_BROWSER` at anything other than a real Edge/Chrome executable.
 
 ## The full command set, per manifest
 
