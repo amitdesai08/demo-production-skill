@@ -5,7 +5,7 @@
 // target list, and the built-in WebSocket to speak CDP. That is the whole dependency list.
 
 import { spawn } from 'node:child_process';
-import { mkdtemp, rm } from 'node:fs/promises';
+import { mkdtemp, mkdir, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 
@@ -112,37 +112,17 @@ export class Session {
   }
 }
 
-export async function launch({ width = 1440, height = 900, scale = 2, headless = true } = {}) {
-  const exe = process.env.DEMO_BROWSER || await findBrowser();
-  const profile = await mkdtemp(path.join(tmpdir(), 'demo-capture-'));
-  const port = 9000 + Math.floor(Math.random() * 900);
-
-  const args = [
-    `--remote-debugging-port=${port}`,
-    `--user-data-dir=${profile}`,
-    `--window-size=${width},${height}`,
-    '--no-first-run', '--no-default-browser-check', '--disable-sync',
-    '--disable-extensions', '--disable-background-networking',
-    '--hide-scrollbars', '--force-device-scale-factor=1',
-    'about:blank',
-  ];
-  if (headless) args.unshift('--headless=new');
-
-  const proc = spawn(exe, args, { stdio: 'ignore', detached: false });
-
-  // The debugger takes a moment to open its port.
+async function connect(port, { width, height, scale, cleanup }) {
+  // The debugger takes a moment to open its port (or may already be up, for attach()).
   let target = null;
   for (let i = 0; i < 80 && !target; i++) {
-    await sleep(250);
     try {
       const list = await fetch(`http://127.0.0.1:${port}/json/list`).then((r) => r.json());
       target = list.find((t) => t.type === 'page' && t.webSocketDebuggerUrl);
     } catch { /* not up yet */ }
+    if (!target) await sleep(250);
   }
-  if (!target) {
-    proc.kill();
-    throw new Error(`browser debugger never came up on port ${port}`);
-  }
+  if (!target) throw new Error(`browser debugger never came up on port ${port}`);
 
   const ws = new WebSocket(target.webSocketDebuggerUrl);
   await new Promise((resolve, reject) => {
@@ -161,12 +141,61 @@ export async function launch({ width = 1440, height = 900, scale = 2, headless =
 
   /** Attach headers to every request the page makes — how the capture authenticates. */
   s.setHeaders = (headers) => s.send('Network.setExtraHTTPHeaders', { headers });
-
   s.close = async () => {
     try { ws.close(); } catch { /* already gone */ }
-    try { proc.kill(); } catch { /* already gone */ }
-    await sleep(400);
-    await rm(profile, { recursive: true, force: true }).catch(() => {});
+    await cleanup();
   };
   return s;
+}
+
+export async function launch({ width = 1440, height = 900, scale = 2, headless = true } = {}) {
+  const exe = process.env.DEMO_BROWSER || await findBrowser();
+  // A product that needs an authenticated session (a real sign-in, not a header token) has to
+  // reuse the SAME profile across runs, so the sign-in survives from one capture to the next.
+  // Default behaviour (no env var) is unchanged: a fresh temp profile, deleted on close().
+  const persistent = process.env.DEMO_PROFILE_DIR;
+  if (persistent) await mkdir(persistent, { recursive: true });
+  const profile = persistent || await mkdtemp(path.join(tmpdir(), 'demo-capture-'));
+  // A fixed port (DEMO_PORT) lets a later, separate process attach() to THIS SAME running
+  // browser instead of launching a new one — the only way a real, human-completed interactive
+  // sign-in (one a synthetic/automated click cannot complete, by design) can survive past the
+  // script that opened the window, since the sign-in lives in the browser process itself, not
+  // on disk.
+  const port = Number(process.env.DEMO_PORT) || 9000 + Math.floor(Math.random() * 900);
+
+  const args = [
+    `--remote-debugging-port=${port}`,
+    `--user-data-dir=${profile}`,
+    `--window-size=${width},${height}`,
+    '--no-first-run', '--no-default-browser-check', '--disable-sync',
+    '--disable-extensions', '--disable-background-networking',
+    '--hide-scrollbars', '--force-device-scale-factor=1',
+    'about:blank',
+  ];
+  if (headless) args.unshift('--headless=new');
+
+  const proc = spawn(exe, args, { stdio: 'ignore', detached: true });
+  // Detached + unref'd so the browser survives this script's own process exiting — needed for
+  // a real, human-completed interactive sign-in (open-for-signin-style usage) where the
+  // browser must keep running after the script that opened it returns control.
+  proc.unref();
+
+  return connect(port, {
+    width, height, scale,
+    cleanup: async () => {
+      try { proc.kill(); } catch { /* already gone */ }
+      await sleep(400);
+      if (!persistent) await rm(profile, { recursive: true, force: true }).catch(() => {});
+    },
+  });
+}
+
+/**
+ * Connects to an ALREADY-RUNNING browser (started by launch() with a fixed DEMO_PORT and left
+ * open) instead of spawning a new one. Its own close() only closes the CDP socket — it never
+ * kills the browser process or deletes its profile, since some other script (or a person) may
+ * still be using that window.
+ */
+export async function attach(port, { width = 1440, height = 900, scale = 2 } = {}) {
+  return connect(port, { width, height, scale, cleanup: async () => {} });
 }
