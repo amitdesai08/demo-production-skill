@@ -40,15 +40,15 @@ demo-production-skill/
 
 ### Option A — personal, across all your own repos (simplest)
 
-Copy `skill/` to your personal Copilot skills folder once, and it's available in every
-workspace you open, in this and future sessions:
+Copy `skill/` to your personal skills folder once, and it's available in every workspace you
+open, in this and future sessions — pick whichever tool(s) you use:
 
 ```powershell
+# GitHub Copilot
 Copy-Item -Recurse -Force "path\to\demo-production-skill\skill" "$HOME\.agents\skills\demo-production"
+# Claude Code
+Copy-Item -Recurse -Force "path\to\demo-production-skill\skill" "$HOME\.claude\skills\demo-production"
 ```
-
-(VS Code Copilot also checks `~/.copilot/skills/` and `~/.claude/skills/` — use whichever your
-tooling reads.)
 
 ### Option B — shared with a team, per project
 
@@ -57,10 +57,14 @@ project:
 
 ```powershell
 ./install.ps1 -TargetRepo "C:\path\to\some-other-project" [-WithReferenceImplementation]
+./install.ps1 -TargetRepo "C:\path\to\some-other-project" -Target claude   # for Claude Code
+./install.ps1 -TargetRepo "C:\path\to\some-other-project" -Target all      # every convention at once
 ```
 
-This copies `skill/` to `<target>\.github\skills\demo-production\` (so any teammate's Copilot
-session in that repo picks it up automatically once committed), and — if
+`-Target` defaults to `github` (`.github/skills/demo-production`, what Copilot reads) and
+also accepts `claude` (`.claude/skills/`), `agents` (`.agents/skills/`, a shared convention
+several tools read) or `all`. This copies `skill/` to `<target>\<convention>\demo-production\`
+so any teammate's session in that repo picks it up automatically once committed, and — if
 `-WithReferenceImplementation` is passed — also copies `reference-implementation/` to
 `<target>\demo\` as a starting point. Commit both into the target repo.
 

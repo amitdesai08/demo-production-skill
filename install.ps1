@@ -8,10 +8,13 @@
     ./install.ps1 -TargetRepo ../some-other-project
 .EXAMPLE
     ./install.ps1 -TargetRepo ../some-other-project -WithReferenceImplementation
+.EXAMPLE
+    ./install.ps1 -TargetRepo ../some-other-project -Target claude
 #>
 [CmdletBinding()]
 param(
     [Parameter(Mandatory)] [string] $TargetRepo,
+    [ValidateSet('github', 'claude', 'agents', 'all')] [string] $Target = 'github',
     [switch] $WithReferenceImplementation,
     [switch] $Force
 )
@@ -24,16 +27,26 @@ if (-not (Test-Path -Path $TargetRepo -PathType Container)) {
 }
 
 $root = $PSScriptRoot
-$skillDest = Join-Path $TargetRepo '.github/skills/demo-production'
-
-if ((Test-Path $skillDest) -and -not $Force) {
-    throw "$skillDest already exists. Pass -Force to overwrite."
+# Any Copilot-, Claude Code-, or Agents-compatible session in the target repo reads its own
+# convention — installing to more than one costs nothing (same files, three folder names).
+$folders = switch ($Target) {
+    'github' { @('.github/skills') }
+    'claude' { @('.claude/skills') }
+    'agents' { @('.agents/skills') }
+    'all'    { @('.github/skills', '.claude/skills', '.agents/skills') }
 }
-if (Test-Path $skillDest) { Remove-Item -Path $skillDest -Recurse -Force }
 
-New-Item -Path $skillDest -ItemType Directory -Force | Out-Null
-Copy-Item -Path (Join-Path $root 'skill/*') -Destination $skillDest -Recurse -Force
-Write-Host "Installed the skill to $skillDest" -ForegroundColor Green
+foreach ($folder in $folders) {
+    $skillDest = Join-Path $TargetRepo "$folder/demo-production"
+    if ((Test-Path $skillDest) -and -not $Force) {
+        throw "$skillDest already exists. Pass -Force to overwrite."
+    }
+    if (Test-Path $skillDest) { Remove-Item -Path $skillDest -Recurse -Force }
+
+    New-Item -Path $skillDest -ItemType Directory -Force | Out-Null
+    Copy-Item -Path (Join-Path $root 'skill/*') -Destination $skillDest -Recurse -Force
+    Write-Host "Installed the skill to $skillDest" -ForegroundColor Green
+}
 
 if ($WithReferenceImplementation) {
     $demoDest = Join-Path $TargetRepo 'demo'
