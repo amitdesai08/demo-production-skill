@@ -24,6 +24,12 @@ knows how to mint. If your product's auth is more involved (an OAuth device-code
 short-lived signed URL), write that logic as a small helper your `scenes.mjs` calls before
 `capture.mjs` starts, and have it set `DEMO_AUTH_HEADER` in the environment for you.
 
+If the subject is an Azure resource behind real RBAC (a Foundry deployment, an ADF pipeline, an
+AI Search index) rather than your own app, don't wire up ad hoc credentials — work through the
+skill's `references/external-resource-access.md` first to decide whose credential captures it,
+then use `setup-demo-access.ps1` in this folder to verify access or provision a least-privilege
+service principal.
+
 ## 3. Azure AI Speech — the voice
 
 `narrate.mjs` needs one of:

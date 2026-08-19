@@ -1,6 +1,6 @@
 ---
 name: demo-production
-description: 'Build a narrated, click-through product demo (a full walkthrough, a short lightning cut, and a denser delivery runbook), or refresh/improve an existing one. Use when asked to: build a demo, create a product walkthrough, record a narrated demo video, add a lightning/short cut, add a delivery runbook, produce a click-through demo, add or fix voiceover/narration for a demo, calibrate demo narration quality, fix blurry or low-resolution demo screenshots, verify demo capture resolution, or set up a demo capture-narrate-build pipeline for a new project.'
+description: 'Build a narrated, click-through product demo (a full walkthrough, a short lightning cut, and a denser delivery runbook), or refresh/improve an existing one. Use when asked to: build a demo, create a product walkthrough, record a narrated demo video, add a lightning/short cut, add a delivery runbook, produce a click-through demo, add or fix voiceover/narration for a demo, calibrate demo narration quality, fix blurry or low-resolution demo screenshots, verify demo capture resolution, generate an AI demo narrative or demo script before recording anything, set up access or a service principal for demoing a gated Azure resource, or set up a demo capture-narrate-build pipeline for a new project.'
 ---
 
 # Demo production
@@ -30,6 +30,14 @@ This isn't a vague aspiration — it decomposes into five specific, checkable th
 5. **Three complementary assets, not one** — a full walkthrough, a short cut, and a runbook for
    a presenter who isn't the demo's author. See the model below.
 
+## Just want the script? Generate an AI demo narrative first
+
+Not every ask is for a full recording. If what's wanted is the **story** — the act structure
+and the scene-by-scene narration lines, as a document a human can read and mark up before any
+capture or Speech-synthesis budget is spent — that's a **demo narrative**, and it's a
+deliverable on its own. See [`references/ai-narrative-generation.md`](references/ai-narrative-generation.md)
+for the exact format and how it plugs into the workflow below once it's approved.
+
 ## The three-asset model
 
 | Asset | Length | Audience | Purpose |
@@ -52,6 +60,9 @@ Each asset is: a scene manifest (fresh capture) or a cut definition (reused fram
    [`references/capture-quality.md`](references/capture-quality.md)), not a small or blurry
    capture from an embedded browser panel. Catching a resolution problem on one throwaway
    scene is free; catching it after capturing all 17 scenes of a real walkthrough is not.
+   If the subject is a real, gated resource (not something with a built-in credential-free demo
+   mode), decide **whose credential captures it** before this step touches it — see
+   [`references/external-resource-access.md`](references/external-resource-access.md).
 2. **Research the audience's real value proposition.** Don't guess. Ground every claim in a
    concrete, verifiable fact about the product — a real enforcement mechanism, a real screen, a
    real workflow — never an invented feature or a plausible-sounding capability that doesn't
@@ -116,6 +127,9 @@ These are a memory jog only — each is covered in full, with the exact fix, in 
    scene captures — many product screens only render once matching data already exists. Verify
    the real on-screen text and conditions in the product's own source before writing a
    `scrollTo`/`spotlight` spec against it. → [`scene-schema.md`](references/scene-schema.md)
+7. Demoing a gated resource with no plan for whose credential captures it is how a demo quietly
+   turns into standing, unaccounted-for access — decide interactive-vs-SPN and least-privilege
+   scope **before** capturing, not after. → [`external-resource-access.md`](references/external-resource-access.md)
 
 ## What's in this package
 
@@ -127,7 +141,9 @@ demo-production/
 │   ├── scene-schema.md               generic step vocabulary + the CUSTOM_STEPS extension point
 │   ├── narration-style.md            the measurable natural-speech calibration bar
 │   ├── new-track-guide.md            audience research + the three-document markdown template
-│   └── pipeline-reference.md         exact commands + the two silent-failure gotchas
+│   ├── pipeline-reference.md         exact commands + the two silent-failure gotchas
+│   ├── ai-narrative-generation.md    generating just the script, before any capture/Speech cost
+│   └── external-resource-access.md   deciding whose credential captures a gated resource
 └── reference-implementation/          a working, generic, product-agnostic pipeline
     ├── CONFIGURE.md                   what to wire up for YOUR product (read this first)
     ├── capture.mjs                    drives a real browser through your scenes
@@ -135,6 +151,7 @@ demo-production/
     ├── build-player.mjs               assembles the interactive HTML click-through
     ├── build-video.mjs                renders the same scenes to an MP4
     ├── build-cut.mjs                  assembles a lightning/runbook cut from already-captured frames
+    ├── setup-demo-access.ps1         verify/plan/create a least-privilege Azure SPN for a gated resource
     ├── scenes.example.mjs             copy this to start a new track
     ├── cuts.example.mjs               copy this to start a lightning/runbook cut
     └── lib/cdp.mjs                    a small, dependency-free Chrome DevTools Protocol client
