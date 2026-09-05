@@ -67,7 +67,13 @@ inspecting a single frame, which cannot tell you whether something moved.
 The practical consequence is that the chapter title **appears and clears** rather than sliding:
 a plate and its label have to move together, and the plate is a `drawbox`, which cannot move at
 all. An animated label over a static plate is worse than no animation — the text slides out of
-its own background.
+its own background, which is exactly what "janky" looks like.
+
+There is a second reason not to reach for motion here. These segments are a still image per
+scene, rendered at **10 fps** (a long GOP on an unchanging frame is what keeps the file small).
+Any movement short enough to feel quick is only three or four frames, so it stutters rather
+than glides. A title that is simply present when the scene starts reads as deliberate; a
+four-frame slide reads as a glitch.
 
 Also avoid nesting an `if()` as another `if()`'s false branch; that is mis-evaluated. Prefer
 `clip(x, 0, 1)` arithmetic.
