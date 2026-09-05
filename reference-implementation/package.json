@@ -10,6 +10,12 @@
     "narrate": "node narrate.mjs",
     "player": "node build-player.mjs",
     "video": "node build-video.mjs",
+    "captions": "node build-captions.mjs",
+    "transcript": "node build-transcript.mjs",
+    "audio-track": "node build-audio-track.mjs",
     "cut": "node build-cut.mjs"
+  },
+  "dependencies": {
+    "microsoft-cognitiveservices-speech-sdk": "^1.40.0"
   }
 }

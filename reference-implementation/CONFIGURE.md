@@ -1,8 +1,14 @@
 # Configuring the reference implementation for your product
 
-Everything in this folder is generic except the five things below — check each one before your
+Everything in this folder is generic except the things below — check each one before your
 first capture. Nothing here reads or depends on any specific product; you are the one wiring it
 to yours.
+
+## 0. `npm install`
+
+One dependency: the Azure Speech SDK, which `narrate.mjs` uses to get per-word timings while it
+synthesises. Those timings are what the captions and the on-screen highlights are placed
+against, and the REST endpoint does not provide them.
 
 ## 1. `scenes.mjs` — copy `scenes.example.mjs` and fill in
 
@@ -14,6 +20,9 @@ to yours.
   (`goto`, `wait`, `waitText`, `scrollTop`, `scrollTo`, `clickText`, `click`, `type`, `press`,
   `dismiss`). A role/persona switcher is the most common addition — see the example.
 - `TEASER_SCENES` (optional) — which scene ids make a good short teaser cut.
+- `SCROLL_CONTAINERS` (optional) — CSS selectors for panes your app scrolls instead of the
+  page. Worth setting if any scene scrolls inside a drawer or a column: a scroll applied to
+  something that cannot move fails silently.
 
 ## 2. Authentication into your product, if it needs any
 
@@ -40,13 +49,31 @@ service principal.
   already-active `az login` session and the **Cognitive Services Speech User** role.
 
 Optional tuning, all with sensible defaults: `DEMO_VOICE` (a specific neural voice),
-`DEMO_RATE` (speaking rate), `DEMO_STYLE` (a speaking style your chosen voice supports).
+`DEMO_RATE` (speaking rate), `DEMO_PITCH`, `DEMO_STYLE` (a speaking style your chosen voice
+supports) and `DEMO_STYLE_DEGREE` (how far to push that style — read the note in the skill's
+`references/narration-style.md` before raising it).
 
-## 4. ffmpeg, for the MP4 build
+If the voice mispronounces a word, add it with its IPA to `lib/pronunciation.mjs`, and check
+the result with `node narrate.mjs --print-ssml <scene-id>` before spending Speech calls.
 
-`build-video.mjs` needs `ffmpeg` and `ffprobe` on `PATH`, or `DEMO_FFMPEG` / `DEMO_FFPROBE`
-pointing at a portable build. Nothing else in this folder needs it — `capture.mjs`,
-`narrate.mjs` and `build-player.mjs` have no native dependency at all.
+## 3b. Per-project files you are expected to fill in
+
+| File | What it holds |
+|---|---|
+| `lib/pronunciation.mjs` | Words the voice says wrong, with IPA. Ships with `agentic`. |
+| `lib/spotlight-cues.mjs` | The spoken phrase each highlight should follow. Empty by default. |
+| `lib/timing.mjs` | The pause held between scenes. Change here only — every output shares it. |
+| `build-audio-track.mjs` (`DESCRIBED`) | Scenes needing a described alternative for the audio-only track. |
+
+## 4. ffmpeg, for the MP4, captions and audio track
+
+`build-video.mjs`, `build-captions.mjs` and `build-audio-track.mjs` need `ffmpeg` and `ffprobe`
+on `PATH`, or `DEMO_FFMPEG` / `DEMO_FFPROBE` pointing at a portable build. `capture.mjs`,
+`narrate.mjs`, `build-transcript.mjs` and `build-player.mjs` have no native dependency.
+
+Optional video tuning: `DEMO_VIDEO_WIDTH`, `DEMO_VIDEO_CRF`, `DEMO_VIDEO_ACCENT` (highlight
+colour), `DEMO_VIDEO_FONT`, `DEMO_VIDEO_TITLES=0` (no chapter titles) and
+`DEMO_VIDEO_TITLE_SECONDS`.
 
 ## 5. Screenshot resolution — verify it, don't just trust the defaults
 
@@ -72,3 +99,8 @@ which isn't reliably available before that version.
 product-agnostic already. If you find yourself editing one of them to make your demo work,
 stop and add a `CUSTOM_STEPS` entry in your own `scenes.mjs` instead — see
 `scenes.example.mjs`.
+
+The overlay expressions in `build-video.mjs` deserve particular care: ffmpeg's expression
+evaluator fails silently there, and `drawbox` cannot animate on time at all. If you do change
+them, verify by rendering and reading the pixels back — a single frame cannot tell you whether
+something moved. The details are in the skill's `references/on-screen-emphasis.md`.

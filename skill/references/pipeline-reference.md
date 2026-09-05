@@ -12,7 +12,10 @@ running it from wherever you placed it) and followed `reference-implementation/C
 - **Azure AI Speech access** — either a subscription key, or an active `az login` session with
   the Cognitive Services Speech User role on the target resource. See `CONFIGURE.md`.
 - **ffmpeg + ffprobe on `PATH`** (or `DEMO_FFMPEG`/`DEMO_FFPROBE` pointing at a portable build)
-  — only `build-video.mjs` needs this; nothing else in the pipeline does.
+  — needed by `build-video.mjs`, `build-captions.mjs` and `build-audio-track.mjs`, which
+  measure each clip rather than trusting the manifest's rounded estimate.
+- **`npm install` in the reference implementation** — `narrate.mjs` uses the Azure Speech SDK
+  (for per-word timings, which the REST endpoint does not provide). It is the only dependency.
 - **Whatever auth your product itself needs** for the capture browser session — see the
   `DEMO_AUTH_HEADER` mechanism in `CONFIGURE.md`.
 - **A real, separately-launched browser for capture — never an IDE's embedded/simple browser.**
@@ -26,11 +29,17 @@ For a **fresh-capture manifest** (a walkthrough or a lightning cut — anything 
 `scenes-<name>.mjs` file):
 
 ```powershell
-node capture.mjs      --scenes scenes-<name>.mjs --manifest scenes-<name>.json
-node narrate.mjs      --manifest scenes-<name>.json [--force]   # see gotcha #2 below
-node build-player.mjs --manifest scenes-<name>.json --out <name>.html
-node build-video.mjs  --manifest scenes-<name>.json --out <name>.mp4
+node capture.mjs        --scenes scenes-<name>.mjs --manifest scenes-<name>.json
+node narrate.mjs        --manifest scenes-<name>.json [--force]   # see gotcha #2 below
+node build-player.mjs   --manifest scenes-<name>.json --out <name>.html
+node build-video.mjs    --manifest scenes-<name>.json --out <name>.mp4
+node build-captions.mjs --manifest scenes-<name>.json --out <name>   # .vtt/.srt/.ttml
+node build-transcript.mjs   --manifest scenes-<name>.json --out <name>
+node build-audio-track.mjs  --manifest scenes-<name>.json --out <name>
 ```
+
+The last three are the accessible companion formats — see
+[`accessible-outputs.md`](accessible-outputs.md). Ship them with the video, not later.
 
 For a **runbook/short cut** (reuses already-captured frames via `cuts.mjs`, no browser
 automation needed):
@@ -40,6 +49,7 @@ node build-cut.mjs <cut-name>
 node narrate.mjs      --manifest scenes-<cut-name>.json [--force]
 node build-player.mjs --manifest scenes-<cut-name>.json --out <cut-name>.html
 node build-video.mjs  --manifest scenes-<cut-name>.json --out <cut-name>.mp4
+node build-captions.mjs --manifest scenes-<cut-name>.json --out <cut-name>
 ```
 
 `build-cut.mjs` always writes `build/scenes-<cut-name>.json` — use that exact name for the
@@ -91,6 +101,19 @@ longer, but is the only way to guarantee the audio matches the current text. Bra
 ids are unaffected either way (no existing file to reuse), so this only matters when
 **editing** an existing track, not writing one from scratch.
 
+One case is handled for you: a clip recorded before per-word timings existed has no
+`audio/<scene-id>.words.json` sidecar, and is treated as missing and re-recorded, so captions
+are never built against a scene with no timings.
+
+## Gotcha #2b — scan the build output for `!`
+
+`build-video.mjs` prints a line beginning with `!` when a highlight's cue phrase is no longer
+spoken in that scene, which happens whenever an edit rewords the line it was anchored to.
+Nothing fails — the highlight quietly goes back to appearing at the top of the scene, and only
+a person can choose which words it should follow now. `build-captions.mjs` uses the same
+convention for a scene that has no word timings. Neither is an error, so neither stops the
+build; both need a human. See [`on-screen-emphasis.md`](on-screen-emphasis.md).
+
 ## Gotcha #3 — `narrate.mjs` reads from the captured JSON, not the source `.mjs`
 
 Related: narration text is synthesised from `scene.say` as it exists in the **captured**
@@ -111,7 +134,9 @@ forcing a rebuild for other edited scenes in the same file.
 
 ## After the build: shipping it
 
-1. Copy the rebuilt `.mp4`s from `build/` into wherever your project keeps its recordings.
+1. Copy the rebuilt `.mp4`s from `build/` into wherever your project keeps its recordings,
+   **together with the `.vtt`/`.srt`/`.ttml`, `.txt` and `.mp3` for the same cut** — a video
+   shipped without them is one most organisations can't publish.
    `build/` itself should be gitignored; the shipped `.mp4`s and `.html` players are small
    enough (a few MB each) to commit directly alongside the docs that reference them.
 2. Update your project's own recordings index with the new/changed length, size and scene

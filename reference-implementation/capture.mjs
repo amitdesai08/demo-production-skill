@@ -33,6 +33,10 @@ const { BASE, SCENES, ACTS } = mod;
 // (log in as a role, open a specific record, dismiss a product-specific toast) without
 // touching this file. See "Extending with custom steps" below.
 const CUSTOM_STEPS = mod.CUSTOM_STEPS || {};
+// Optional: CSS selectors for the panes your app scrolls INSTEAD of the page — a drawer
+// body, a main column with its own overflow. Tried first when a step needs to scroll. See
+// the scroller() helper for why this matters.
+const SCROLL_CONTAINERS = mod.SCROLL_CONTAINERS || [];
 // Optional: called once per scene, before that scene's own `steps` run, if the scene sets an
 // `actor` field — mirrors a common "switch persona/role, then act" pattern without baking any
 // one product's notion of a role into this file. Leave undefined if your product has no such
@@ -54,7 +58,29 @@ const js = (s) => JSON.stringify(String(s));
 // it survives a CSS refactor in a way a generated class name does not.
 const HELPERS = `
 window.__demo = {
-  scroller() { return document.scrollingElement || document.documentElement; },
+  scrollSelectors: ${JSON.stringify(SCROLL_CONTAINERS)},
+  // Which element actually moves when this page scrolls. Assuming it is always the document
+  // is the single most common cause of a scroll step "succeeding" and changing nothing:
+  // apps that scroll a drawer or a main column leave document.scrollingElement at rest, so
+  // the scroll is applied to something that cannot move and the screenshot comes out at the
+  // top of the list. Prefer a pane the project named, then the document, then whichever
+  // visible pane genuinely overflows.
+  scroller() {
+    const overflows = (el) => !!el && el.scrollHeight > el.clientHeight + 4;
+    for (const sel of window.__demo.scrollSelectors) {
+      const el = document.querySelector(sel);
+      if (overflows(el)) return el;
+    }
+    const doc = document.scrollingElement || document.documentElement;
+    if (overflows(doc)) return doc;
+    const panes = [...document.querySelectorAll('div,main,section,aside')].filter((el) => {
+      if (!overflows(el) || !window.__demo.visible(el)) return false;
+      const oy = getComputedStyle(el).overflowY;
+      return oy === 'auto' || oy === 'scroll';
+    });
+    panes.sort((a, b) => (b.clientWidth * b.clientHeight) - (a.clientWidth * a.clientHeight));
+    return panes[0] || doc;
+  },
   visible(el) {
     if (!el) return false;
     const r = el.getBoundingClientRect();
@@ -106,8 +132,20 @@ window.__demo = {
   },
   resolve(spec, grow) {
     if (!spec) return null;
-    if (!String(spec).startsWith('text:')) return document.querySelector(spec);
-    const el = window.__demo.byText(String(spec).slice(5));
+    const s = String(spec);
+    // 'in:<css>@<text>' — the one of these elements whose text contains this. For picking a
+    // single row out of a list, where a bare text match would find a wrapper and a bare
+    // selector would find the first row.
+    if (s.startsWith('in:')) {
+      const at = s.indexOf('@');
+      if (at < 0) return null;
+      const sel = s.slice(3, at);
+      const want = s.slice(at + 1).toLowerCase();
+      return [...document.querySelectorAll(sel)]
+        .find((e) => window.__demo.visible(e) && (e.innerText || '').toLowerCase().includes(want)) || null;
+    }
+    if (!s.startsWith('text:')) return document.querySelector(s);
+    const el = window.__demo.byText(s.slice(5));
     if (!el) return null;
     return grow ? window.__demo.panel(el) : el;
   },
@@ -279,9 +317,18 @@ async function main() {
         await inject(s);
         await settle(s);
 
-        const spotlight = scene.spotlight
-          ? await s.eval(`window.__demo.rect(window.__demo.resolve(${js(scene.spotlight)}, true))`)
-          : null;
+        // A scene may highlight more than one region — give `spotlight` an array and each
+        // entry is measured in order. `spotlight` stays the first rect so anything reading
+        // the older single-region shape keeps working.
+        const wants = scene.spotlight == null ? []
+          : (Array.isArray(scene.spotlight) ? scene.spotlight : [scene.spotlight]);
+        const spotlights = [];
+        for (const want of wants) {
+          const r = await s.eval(`window.__demo.rect(window.__demo.resolve(${js(want)}, true))`);
+          if (r) spotlights.push(r);
+          else console.log(`  note ${scene.id}: no element matched spotlight ${JSON.stringify(want)}`);
+        }
+        const spotlight = spotlights[0] || null;
         const click = scene.click
           ? await s.eval(`window.__demo.rect(window.__demo.resolve(${js(scene.click)}, false))`)
           : null;
@@ -292,7 +339,9 @@ async function main() {
         manifest.push({
           id: scene.id, act: scene.act, title: scene.title, actor: scene.actor,
           say: scene.say.replace(/\s+/g, ' ').trim(),
-          image: `shots/${file}`, spotlight, click,
+          image: `shots/${file}`, spotlight,
+          ...(spotlights.length > 1 ? { spotlights } : {}),
+          click,
         });
         console.log(`  ok  ${label}`);
       } catch (e) {

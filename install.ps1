@@ -57,7 +57,7 @@ if ($WithReferenceImplementation) {
         New-Item -Path $demoDest -ItemType Directory -Force | Out-Null
         Copy-Item -Path (Join-Path $root 'reference-implementation/*') -Destination $demoDest -Recurse -Force
         Write-Host "Installed the reference implementation to $demoDest" -ForegroundColor Green
-        Write-Host "Read $demoDest/CONFIGURE.md next." -ForegroundColor DarkGray
+        Write-Host "Run 'npm install' in $demoDest (the Speech SDK is its only dependency), then read $demoDest/CONFIGURE.md." -ForegroundColor DarkGray
     }
 }
 

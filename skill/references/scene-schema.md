@@ -10,6 +10,8 @@ A scene manifest is a `scenes.mjs` (or `scenes-<name>.mjs`) ES module. Copy
 - `CUSTOM_STEPS` (optional) — your product's own step verbs. See below.
 - `setActor` (optional) — an auto-role-switch hook keyed off a scene's `actor` field.
 - `TEASER_SCENES` (optional) — which scene ids make a good short teaser cut.
+- `SCROLL_CONTAINERS` (optional) — CSS selectors for panes your app scrolls instead of the
+  page (a drawer body, a main column with its own overflow). See the scrolling note below.
 
 ## Scene object shape
 
@@ -21,14 +23,44 @@ A scene manifest is a `scenes.mjs` (or `scenes-<name>.mjs`) ES module. Copy
   actor: 'admin',                  // OPTIONAL — triggers setActor before this scene's steps, if defined
   steps: [ /* array of step objects, run in order — see vocabulary below */ ],
   spotlight: 'text:Some Fuzzy Match',   // OPTIONAL — draws a highlight box, does not click
+                                        // may also be an ARRAY of specs, one per region
   click: 'text:Button Label',           // OPTIONAL — draws a highlight box on something already clicked by a step
+  voice: { rate: '+4%', pitch: '+6%', styleDegree: '1.4' },  // OPTIONAL — delivery override
+  ssmlBody: '<emphasis level="strong">...</emphasis>',       // OPTIONAL — hand-shaped markup
   say: `Multi-line narration prose. No presenter-instructions. Natural third-person
     voice describing the product, not the act of demoing it.`,
 }
 ```
 
 `say` gets whitespace-collapsed automatically; write it wrapped across multiple lines for your
-own readability.
+own readability. It always holds the **plain wording** even when `ssmlBody` is set, because the
+captions and the transcript are read from it.
+
+### Spotlight specs
+
+A spotlight spec can be:
+
+| Form | Matches |
+|---|---|
+| `'.some-css-selector'` | The first `querySelector` match |
+| `'text:Some Label'` | The smallest visible element whose text contains this, grown out to the card it belongs to |
+| `'in:.dv-row@Status only'` | The one of `.dv-row` whose text contains "Status only" |
+
+Prefer a CSS selector where you have one. A `text:` spec is grown outwards to the surrounding
+panel, and on some layouts that grows further than intended — occasionally to most of the
+frame. The `in:` form exists for picking a single row out of a list, where a bare text match
+finds a wrapper and a bare selector finds the first row.
+
+Give `spotlight` an array to highlight several regions in one scene. They are timed to the
+narration in the order listed — see [`on-screen-emphasis.md`](on-screen-emphasis.md), which
+also covers how to anchor each one to the phrase that explains it. A summary or closing scene
+with nothing specific to point at should simply omit `spotlight`.
+
+### Delivery overrides
+
+`voice` and `ssmlBody` are for the rare line worth shaping by hand — typically an opening
+title. Reach for them per scene rather than raising expressiveness across the whole track; see
+[`narration-style.md`](narration-style.md).
 
 ## The generic step vocabulary (built into the engine)
 
@@ -48,6 +80,22 @@ editing the engine:
 | `type` | `['selector', 'text']` | Sets a text input/textarea's value via its native setter and dispatches an `input` event |
 | `press` | a key name, e.g. `'Enter'` | Dispatches a keydown on the currently focused element |
 | `dismiss` | text a banner/toast starts with | Closes it via its own close button, if one matching that text is present — safe to call unconditionally |
+
+## Scrolling: the page is often not what scrolls
+
+`scrollTop` and `scrollTo` act on whichever element actually moves. Assuming that is always
+the document is the most common reason a scroll step "succeeds" and changes nothing: an app
+that scrolls a drawer or a main column leaves `document.scrollingElement` at rest, so the
+scroll is applied to something that cannot move and the screenshot comes out at the top of the
+list — with no error.
+
+The engine tries, in order: the selectors your scenes file exports as `SCROLL_CONTAINERS`, then
+the document, then the largest visible pane that genuinely overflows. Naming your app's own
+scroll panes is the reliable option:
+
+```js
+export const SCROLL_CONTAINERS = ['.drawer-body', 'main.main'];
+```
 
 ## Extending with custom steps — the pattern that keeps the engine generic
 

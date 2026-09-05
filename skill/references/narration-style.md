@@ -6,25 +6,104 @@ that bar, instead of relying on "it sounds fine to me."
 
 ## Why this is measurable, not a matter of taste
 
-`narrate.mjs`'s SSML shaping does exactly one transformation beyond the raw text: it turns every
-em-dash surrounded by spaces into a **120ms forced `<break>`**:
+`narrate.mjs`'s SSML shaping does exactly two transformations beyond the raw text — an
+em-dash surrounded by spaces becomes a **160ms forced `<break>`**, and a colon becomes a
+**120ms** one:
 
 ```js
 // from narrate.mjs's ssml() function
-.replace(/\s+\u2014\s+/g, '<break time="120ms"/> ');
+.replace(/\s+\u2014\s+/g, '<break time="160ms"/> ')
+.replace(/:\s+/g, ':<break time="120ms"/> ');
 ```
 
 The neural voice already paces sentence and clause boundaries on its own — periods and commas
-need no help. An em-dash is the *only* punctuation this pipeline treats specially, precisely
-because the voice otherwise runs straight through it as if the words on either side were one
-clause. That means **em-dash density is a direct, physical measurement of how many forced
-pauses are stacked into a scene's audio** — five em-dashes in a scene is five extra beats of
-hesitation, whether that was the intent or not.
+need no help. An em-dash and a colon are the *only* punctuation this pipeline treats
+specially, precisely because the voice otherwise runs straight through them as if the words on
+either side were one clause. That means **em-dash density is a direct, physical measurement of
+how many forced pauses are stacked into a scene's audio** — five em-dashes in a scene is five
+extra beats of hesitation, whether that was the intent or not.
 
 Contraction density ("it's", "doesn't", "can't", "there's", "that's" vs. "it is", "does not",
 "cannot", "there is", "that is") is the other half of the same signal: natural spoken English is
 heavily contracted, and a narration written in fully-expanded formal register reads as written
 prose being read aloud, not as someone talking.
+
+## Grade the pauses; do not make them uniform
+
+This is the setting most worth getting right, and both of the obvious answers are wrong.
+
+Both were measured on real output:
+
+| Shaping | Every sentence boundary lands at | How it reads |
+|---|---|---|
+| A uniform forced break at each sentence | ~0.67s | Stilted — a list being read aloud |
+| No sentence break at all (leave it to the voice) | ~0.29s | Run-on — sentences colliding |
+
+Removing the break does **not** produce natural variation, which is the tempting conclusion.
+It just makes every boundary uniformly *short*. The fault in both cases is **uniformity**,
+not the length.
+
+So `narrate.mjs` grades the boundary by where it falls (`stageSentences()`):
+
+- an ordinary sentence boundary gets **180ms**, landing at ~0.47s;
+- the **last** boundary in a scene gets **420ms**, landing at ~0.71s, so the closing sentence
+  — the line the whole scene has been building to — has a beat to land on.
+
+Tune with `DEMO_SENTENCE_BREAK_MS` / `DEMO_CLOSING_BREAK_MS` if your voice or rate differs.
+
+You can check this rather than argue about it. Every scene has a
+`build/audio/<id>.words.json` with the real time of every word, so the gaps are readable
+directly:
+
+```powershell
+node -e "const w=require('./build/audio/01-home.words.json');for(let i=1;i<w.length;i++){const g=w[i].start-(w[i-1].start+w[i-1].dur);if(g>0.15)console.log(w[i-1].text,'|',g.toFixed(2)+'s')}"
+```
+
+A column of near-identical numbers means uniform pacing, whichever direction it errs in.
+
+Section-level beats are not made here at all. They are the silence between scenes, set once
+in `lib/timing.mjs` and shared by every output — see
+[`accessible-outputs.md`](accessible-outputs.md).
+
+## Staging is carried by the words, not just the markup
+
+A scene that reads as a flowing narrative usually has a shape — a principle, then what is on
+screen, then the point. Two things break that, and no amount of SSML fixes either:
+
+- **A trailing line that belongs to a different thought.** Orientation or housekeeping
+  ("we're signed in as an administrator") tacked onto the end of an argument arrives as a
+  tangent. Fold it into the sentence it belongs with, or give it the closing beat.
+- **Two short sentences where one belongs.** "This is the product. It's the thing that does
+  X." is choppier spoken than written. A colon joins them and earns a 120ms beat at the
+  reveal.
+
+## Fixing a word the voice says wrong
+
+Diagnosing a mispronunciation needs a listen; fixing one does not. Add the word to
+`lib/pronunciation.mjs` with its IPA and the voice says exactly that:
+
+- `NAME_PHONEMES` — proper nouns, matched exactly and case-sensitively, so a name that is also
+  an ordinary word elsewhere isn't caught by accident.
+- `WORD_PHONEMES` — ordinary words, matched case-insensitively on a word boundary. Ships with
+  `agentic` (`əˈdʒɛntɪk`), which generic voices reliably render as "AY-gentic".
+
+Check the markup before spending Speech calls on it:
+
+```powershell
+node narrate.mjs --print-ssml 01-home
+```
+
+That shows a phoneme rule that matched more than intended, or a hand-written `ssmlBody` with a
+stray tag, for free.
+
+## Expressiveness: enough to have contour, not enough to editorialise
+
+`DEMO_STYLE_DEGREE` (default `1.15`) controls how far the speaking style is pushed past the
+voice's default read. Around this value the delivery keeps audible rise and fall. Pushed
+higher, the voice starts stressing words the sense doesn't call for, which listeners hear as
+odd emphasis rather than as enthusiasm. Lift it for a single opening line if you want one, via
+that scene's own `voice` override (see [`scene-schema.md`](scene-schema.md)) rather than
+raising it for the whole track.
 
 ## Calibrating your own bar
 
@@ -67,9 +146,9 @@ not" → "doesn't", "there is" → "there's", "cannot" → "can't", "it is" → 
 - **Shorter sentences, not longer ones.** If a sentence needs three clauses to make its point,
   it's usually two sentences.
 - **Avoid colons as a clause-joiner** in narration text, for the same reason as em-dashes — a
-  colon-joined compound sentence tends to correlate with the same over-written, under-contracted
-  register. If you find yourself reaching for one, it's usually a sign the sentence should just
-  be split.
+  colon now carries a forced 120ms pause of its own, and a colon-joined compound sentence tends
+  to correlate with the same over-written, under-contracted register. If you find yourself
+  reaching for one, it's usually a sign the sentence should just be split.
 - **Grounded claims only, no invented statistics.** Any time-saving, capability, or comparison
   claim must trace to something real and verifiable in the product. This applies with extra
   force to a business/ROI-framed track — see `references/new-track-guide.md` for how to thread
