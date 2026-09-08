@@ -12,15 +12,24 @@ a video editor and none goes stale independently of the narration.
 
 ## A pointer that behaves like a person
 
-`build-cursor.mjs` draws the pointer once, as an SVG in the same headless browser the capture
-step uses, screenshotted over a transparent background. `build-video.mjs` then flies it to
-each highlighted region so that it **arrives exactly as that region's highlight appears** —
-which reads as the click landing. It also carries over from where the previous scene left it,
-rather than teleporting to a fresh start position at every cut, so the whole piece feels like
-one continuous session.
+`build-cursor.mjs` draws the pointer and a click ring, as SVG in the same headless browser
+the capture step uses, screenshotted over a transparent background. `build-video.mjs` then
+flies the pointer to each highlighted region so that it **arrives exactly as that region's
+highlight appears** — and on arrival it dips a couple of pixels, the way a hand does, while a
+ring expands and fades from the click point. That is what makes it read as *using* the
+product rather than floating over it. The pointer also carries over from where the previous
+scene left it, rather than teleporting to a fresh start position at every cut, so the whole
+piece feels like one continuous session.
 
-Its path is a sum of `clip()` ramps, one per target, which telescopes exactly to the final
-position; it is not built from branching, because a nested `if()` is mis-evaluated here.
+Its path is a sum of `clip()` ramps, one per target plus two for the press, which telescopes
+exactly to the final position; it is not built from branching, because a nested `if()` is
+mis-evaluated here. The ripple works because `scale` with `eval=frame` reads the timestamp
+and `fade`'s alpha applies to the overlay's own stream — so it can grow and dissolve at once.
+Each ring input must be **looped**: as a single-frame input its filters would only ever be
+evaluated at t=0, and the ripple would sit there frozen.
+
+Keep the pointer small — about 20×32 for a 1920-wide frame, close to a real cursor. Larger
+reads as a presentation prop.
 
 Set `DEMO_VIDEO_CURSOR=0` to render without it. A scene with no highlights gets no pointer,
 so an opening or summary scene stays still.
@@ -33,11 +42,14 @@ that, it needs video capture, not this pipeline.
 
 ## Titles that fly in
 
-`build-title-cards.mjs` renders one card per scene — rounded corners, a gradient accent bar,
-an act eyebrow, a drop shadow, real typography — in the browser, then `build-video.mjs` flies
-the whole card in from off the left edge with a cubic ease-out, holds it long enough to read,
-and eases it back out. It rests in the lower third so it never covers the part of the product
-being described.
+`build-title-cards.mjs` renders one card per scene — rounded corners, an accent bar, a drop
+shadow, real typography — in the browser, then `build-video.mjs` flies the whole card in from
+off the left edge with a cubic ease-out, holds it long enough to read, and eases it back out.
+
+It settles as a **lower-third near the left edge**, which is where a viewer expects a chapter
+label and keeps it clear of the screen it is labelling. Resist the temptation to put anything
+else on the card: an act or section number reads as scaffolding to an audience who never saw
+your outline, and it looks odd when the first title in a cut happens to be "Act 2".
 
 The card is one pre-rendered PNG on purpose. A title assembled from ffmpeg primitives cannot
 animate: see the limits below.
@@ -99,6 +111,9 @@ cannot tell you whether something moved.
    x=24 to x=303 between those two frames. `overlay` additionally honours a delayed start
    (`t` minus a constant) *and* an `enable=` window on the same filter — measured hidden at
    0.2s, parked at x=10 at 0.8s, mid-travel at x=154 at 1.5s, arrived at x=310 at 2.5s.
+3. **`scale` with `eval=frame` also reads `t`**, and `fade` can animate alpha on the same
+   stream — measured on a test render at 0.1s/0.5s/0.95s: 31px bright, 77px bright, 124px
+   faded. That combination is what makes the click ripple possible.
 
 So **anything that moves is an `overlay` of a pre-rendered PNG**. That is not just a
 workaround: it also means the artwork is designed in a browser, with gradients, shadows and

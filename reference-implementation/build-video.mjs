@@ -71,9 +71,9 @@ const ACCENT = process.env.DEMO_VIDEO_ACCENT || '0x4F6BED';
 // expression or a literal has to be escaped out of that syntax first.
 const expr = (s) => s.replace(/,/g, '\\,');
 
-// The title card flies in from off the left edge, settles toward the middle of the frame,
-// holds long enough to read, then leaves the way it came. Eased rather than linear: a
-// constant-speed slide is what reads as cheap.
+// The title card flies in from off the left edge and settles as a lower-third, holds long
+// enough to read, then leaves the way it came. Eased rather than linear: a constant-speed
+// slide is what reads as cheap.
 const TITLE_IN = 0.55;
 const TITLE_HOLD = Number(process.env.DEMO_VIDEO_TITLE_SECONDS || 2.9);
 const TITLE_OUT = 0.45;
@@ -81,12 +81,15 @@ const TITLE_OUT = 0.45;
 function titleCardOverlay(card, k, H) {
   const w = Math.round(card.w * k);
   const h = Math.round(card.h * k);
+  const bleed = Math.round((card.bleed || 0) * k);
   const outStart = (TITLE_IN + TITLE_HOLD).toFixed(2);
   const gone = (TITLE_IN + TITLE_HOLD + TITLE_OUT).toFixed(2);
   const startX = -(w + 20);
-  const restX = Math.round((WIDTH - w) / 2);
-  // Sits in the lower third, so it never covers the part of the product being described.
-  const y = Math.round(H * 0.70 - h / 2);
+  // Lower-third, anchored near the left edge: the conventional place for a chapter label,
+  // and out of the way of the screen it is labelling. The PNG carries a transparent shadow
+  // margin, so the visible card edge is `bleed` inside it.
+  const restX = Math.round(64 * k) - bleed;
+  const y = Math.round(H - 84 * k - (h - bleed));
 
   const easeIn = `(1-pow(1-clip(t/${TITLE_IN},0,1),3))`;
   const easeOut = `pow(clip((t-${outStart})/${TITLE_OUT},0,1),3)`;
@@ -103,9 +106,12 @@ function titleCardOverlay(card, k, H) {
 // A pointer that travels to each highlighted region and arrives exactly as that region's
 // highlight appears, so the frame reads as somebody working the interface rather than as a
 // diagram with boxes drawn on it.
-const CURSOR_W = 28;
-const CURSOR_H = 45;
+const CURSOR_W = 20;
+const CURSOR_H = 32;
 const TRAVEL = 0.55;
+// The press: the pointer dips a couple of pixels as it lands, the way a hand does.
+const PRESS = 3;
+const PRESS_HOLD = 0.12;
 
 // Where in a region a person would actually click: the middle of a small control, but only
 // a little way into a large panel — dead-centre of a full-height column looks aimless.
@@ -116,9 +122,9 @@ function cursorTarget(rect, k) {
   };
 }
 
-// One monotone sum-of-ramps per axis: the pointer rests, then eases to the next target.
-// Ramps are added rather than branched because a nested if() is mis-evaluated here, and a
-// sum of clip() ramps telescopes exactly to the final position.
+// One monotone sum-of-ramps per axis: the pointer rests, then eases to the next target and
+// dips as it arrives. Ramps are added rather than branched because a nested if() is
+// mis-evaluated here, and a sum of clip() ramps telescopes exactly to the final position.
 function cursorPath(spots, from, k) {
   const stops = spots.map((s) => ({ at: Math.max(TRAVEL, s.start), to: cursorTarget(s.rect, k) }));
   if (!stops.length) return null;
@@ -126,14 +132,44 @@ function cursorPath(spots, from, k) {
   let ex = String(from.x);
   let ey = String(from.y);
   let prev = from;
+  const clicks = [];
   for (const stop of stops) {
     const ramp = `clip((t-${(stop.at - TRAVEL).toFixed(2)})/${TRAVEL},0,1)`;
     ex += `+(${stop.to.x - prev.x})*${ramp}`;
     ey += `+(${stop.to.y - prev.y})*${ramp}`;
+    // Down on arrival, back up a moment later — two ramps, so it stays a plain sum.
+    const press = Math.max(1, Math.round(PRESS * k));
+    const down = `clip((t-${stop.at.toFixed(2)})/0.06,0,1)`;
+    const up = `clip((t-${(stop.at + PRESS_HOLD).toFixed(2)})/0.10,0,1)`;
+    ex += `+${press}*${down}-${press}*${up}`;
+    ey += `+${press}*${down}-${press}*${up}`;
+    clicks.push({ at: stop.at, ...stop.to });
     prev = stop.to;
   }
   // The drawn tip sits ~2px in from the image's top-left corner.
-  return { x: `(${ex})-2`, y: `(${ey})-2`, end: prev };
+  return { x: `(${ex})-2`, y: `(${ey})-2`, end: prev, clicks };
+}
+
+// A ring that expands and fades from the click point, so the pointer reads as *using* the
+// product rather than floating over it. `scale` with eval=frame reads the timestamp, and
+// `fade`'s alpha works on the overlay's own stream, so the ripple both grows and dissolves —
+// verified by measuring a test render at 0.1s/0.5s/0.95s (31px bright -> 77px bright ->
+// 124px faded).
+const RIPPLE_FROM = 26;
+const RIPPLE_TO = 96;
+const RIPPLE_DUR = 0.5;
+
+function clickRipple(click, k, input, tail, label) {
+  const at = click.at.toFixed(2);
+  const from = Math.round(RIPPLE_FROM * k);
+  const grow = Math.round((RIPPLE_TO - RIPPLE_FROM) * k);
+  const size = `${from}+${grow}*clip((t-${at})/${RIPPLE_DUR},0,1)`;
+  return [
+    `[${input}:v]scale=w='${size}':h='${size}':eval=frame,`
+      + `fade=t=in:st=${at}:d=0.05:alpha=1,`
+      + `fade=t=out:st=${(click.at + 0.16).toFixed(2)}:d=0.34:alpha=1[${label}]`,
+    `[${tail}][${label}]overlay=x='${click.x}-overlay_w/2':y='${click.y}-overlay_h/2':eval=frame[${label}o]`,
+  ];
 }
 
 // Outlines the region being talked about, for as long as it is being talked about.
@@ -226,7 +262,9 @@ async function main() {
     ? await readFile(path.join(OUT, 'titles', 'index.json'), 'utf8').then(JSON.parse).catch(() => ({}))
     : {};
   const cursorPng = path.join(OUT, 'cursor.png');
+  const ringPng = path.join(OUT, 'click-ring.png');
   const haveCursor = CURSOR && await stat(cursorPng).then((s) => s.size > 0).catch(() => false);
+  const haveRing = await stat(ringPng).then((s) => s.size > 0).catch(() => false);
   if (CURSOR && !haveCursor) console.log('  ! no cursor.png — run build-cursor.mjs for the virtual pointer');
   const missingCards = scenes.filter((s) => TITLES && s.title && !s.card && !titleIndex[s.id]);
   if (missingCards.length) {
@@ -256,18 +294,28 @@ async function main() {
     if (plan) cursorAt = plan.end;
     const card = !scene.card && titleIndex[scene.id] ? titleCardOverlay(titleIndex[scene.id], k, outH) : null;
 
-    // Inputs are 0 image, 1 audio, then the cursor and title PNGs in that order.
+    // Inputs are 0 image, 1 audio, then the ripples, cursor and title PNGs in that order.
     const extra = [];
     const chain = [`[0:v]${base.join(',')}[bg]`];
     let tail = 'bg';
+
+    // Ripples go under the pointer, so the pointer is never obscured by its own click. Each
+    // ring is looped: as a single-frame input its scale/fade would only ever be evaluated at
+    // t=0 and the ripple would sit there frozen.
+    for (const [i, click] of (haveRing ? plan?.clicks || [] : []).entries()) {
+      extra.push(['-loop', '1', '-i', `"${ringPng}"`]);
+      const [mk, ov] = clickRipple(click, k, extra.length + 1, tail, `r${i}`);
+      chain.push(mk, ov);
+      tail = `r${i}o`;
+    }
     if (plan) {
-      extra.push(`"${cursorPng}"`);
+      extra.push(['-i', `"${cursorPng}"`]);
       chain.push(`[${extra.length + 1}:v]scale=${Math.round(CURSOR_W * k)}:${Math.round(CURSOR_H * k)}[cur]`);
       chain.push(`[${tail}][cur]overlay=x='${plan.x}':y='${plan.y}'[wc]`);
       tail = 'wc';
     }
     if (card) {
-      extra.push(`"${path.join(OUT, titleIndex[scene.id].file)}"`);
+      extra.push(['-i', `"${path.join(OUT, titleIndex[scene.id].file)}"`]);
       chain.push(`[${extra.length + 1}:v]scale=${card.w}:${card.h}[card]`);
       // Drawn after the pointer so the card is never sliced by it while it flies in.
       chain.push(`[${tail}][card]overlay=x='${card.x}':y=${card.y}:enable='${card.enable}'[wt]`);
@@ -279,7 +327,7 @@ async function main() {
       '-y', '-loglevel', 'error',
       '-loop', '1', '-framerate', String(FPS), '-i', `"${path.join(OUT, scene.image)}"`,
       '-i', `"${path.join(OUT, scene.audio)}"`,
-      ...extra.flatMap((f) => ['-i', f]),
+      ...extra.flat(),
       '-t', hold,
       '-filter_complex', `"${chain.join(';')}"`,
       '-map', '"[v]"', '-map', '1:a',

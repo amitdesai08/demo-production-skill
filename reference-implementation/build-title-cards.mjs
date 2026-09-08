@@ -33,24 +33,21 @@ const ACCENT = `#${(process.env.DEMO_VIDEO_ACCENT || '0x4F6BED').replace(/^0x/, 
 const BLEED = 44;
 const SCALE = 2;
 
-function html(title, act) {
-  const eyebrow = act ? `<div class="eyebrow">Act ${act}</div>` : '';
+function html(title) {
   return `<!doctype html><html><head><meta charset="utf-8"><style>
   html,body{margin:0;background:transparent}
   body{padding:${BLEED}px;display:inline-block}
-  .card{display:inline-flex;align-items:stretch;gap:24px;
-        padding:24px 44px 24px 26px;border-radius:16px;
-        background:linear-gradient(180deg,rgba(30,30,34,.95),rgba(20,20,24,.95));
+  .card{display:inline-flex;align-items:stretch;gap:18px;
+        padding:16px 30px 16px 18px;border-radius:11px;
+        background:linear-gradient(180deg,rgba(30,30,34,.94),rgba(20,20,24,.94));
         border:1px solid rgba(255,255,255,.12);
-        box-shadow:0 20px 50px rgba(0,0,0,.5), 0 2px 6px rgba(0,0,0,.35)}
-  .bar{width:7px;border-radius:4px;background:${ACCENT}}
-  .text{display:flex;flex-direction:column;justify-content:center;gap:7px}
-  .eyebrow{font:600 15px/1 'Segoe UI',system-ui,sans-serif;letter-spacing:.16em;
-           text-transform:uppercase;color:${ACCENT};filter:brightness(1.35)}
-  .title{font:600 34px/1.15 'Segoe UI',system-ui,sans-serif;color:#fff;
+        box-shadow:0 14px 34px rgba(0,0,0,.45), 0 2px 5px rgba(0,0,0,.3)}
+  .bar{width:5px;border-radius:3px;background:${ACCENT}}
+  .text{display:flex;flex-direction:column;justify-content:center}
+  .title{font:600 25px/1.15 'Segoe UI',system-ui,sans-serif;color:#fff;
          letter-spacing:.1px;white-space:nowrap}
   </style></head><body><div class="card"><div class="bar"></div>
-  <div class="text">${eyebrow}<div class="title">${title}</div></div></div></body></html>`;
+  <div class="text"><div class="title">${title}</div></div></div></body></html>`;
 }
 
 const escapeHtml = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;')
@@ -76,7 +73,7 @@ async function main() {
   const index = {};
   try {
     for (const scene of wanted) {
-      const page = html(escapeHtml(scene.title), scene.act);
+      const page = html(escapeHtml(scene.title));
       await session.navigate(`data:text/html;base64,${Buffer.from(page, 'utf8').toString('base64')}`);
       // Navigating resets this, so it has to be re-applied per page or the shot is opaque.
       await session.send('Emulation.setDefaultBackgroundColorOverride', {
@@ -98,8 +95,9 @@ async function main() {
       const file = `titles/${scene.id}.png`;
       await writeFile(path.join(OUT, file), Buffer.from(shot.data, 'base64'));
       // Logical (1x) size — the filtergraph scales the 2x capture down to the output width.
+      // `bleed` is the transparent shadow margin, which positioning has to allow for.
       index[scene.id] = {
-        title: scene.title, file,
+        title: scene.title, file, bleed: BLEED,
         w: Math.round(r.w + BLEED * 2), h: Math.round(r.h + BLEED * 2),
       };
       console.log(`    ${scene.id.padEnd(24)} ${index[scene.id].w}x${index[scene.id].h}`);
