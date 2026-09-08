@@ -28,9 +28,9 @@ This isn't a vague aspiration — it decomposes into specific, checkable things:
    statistic or an unverifiable percentage.
 4. **Each audience gets its own story**, told in the vocabulary and about the value that
    audience actually cares about — see [`references/new-track-guide.md`](references/new-track-guide.md).
-5. **The viewer is shown where to look**, with highlights timed to the sentence that explains
-   them rather than parked on screen for the whole scene — see
-   [`references/on-screen-emphasis.md`](references/on-screen-emphasis.md).
+5. **The viewer is shown where to look, and sees somebody looking there** — highlights timed
+   to the sentence that explains them, and a pointer that travels to each one and arrives as
+   it appears — see [`references/on-screen-emphasis.md`](references/on-screen-emphasis.md).
 6. **It ships watchable without sound and usable without sight** — captions cut from the real
    voice timings, a transcript, and an audio-only track, all built from the same source as the
    video — see [`references/accessible-outputs.md`](references/accessible-outputs.md).
@@ -152,8 +152,9 @@ These are a memory jog only — each is covered in full, with the exact fix, in 
    line starting `!` that nothing else will flag. **Scan the build output for `!`.** →
    [`on-screen-emphasis.md`](references/on-screen-emphasis.md)
 10. Every failure mode in ffmpeg's expression evaluator here is silent, and `drawbox` cannot
-   animate on time at all (`t` there means `thickness`). Verify overlay changes by rendering
-   and reading pixels back, not by looking at one frame. →
+   animate on time at all (`t` there means `thickness`). Anything that moves is an `overlay`
+   of a pre-rendered PNG. Verify overlay changes by rendering and reading pixels back, not by
+   looking at one frame. →
    [`on-screen-emphasis.md`](references/on-screen-emphasis.md)
 11. Captions, transcript and audio track must never compute their own timeline — they share
    `lib/timing.mjs` and `lib/track-timeline.mjs` with the video, or they drift a little further
@@ -179,7 +180,9 @@ demo-production/
     ├── capture.mjs                    drives a real browser through your scenes
     ├── narrate.mjs                    Azure AI Speech narration + per-word timings
     ├── build-player.mjs               assembles the interactive HTML click-through
-    ├── build-video.mjs                renders the scenes to an MP4, with titles and highlights
+    ├── build-video.mjs                renders the scenes to an MP4, with titles, highlights and a cursor
+    ├── build-cursor.mjs               draws the virtual pointer (SVG via the capture browser)
+    ├── build-title-cards.mjs          renders the fly-in title card for each scene
     ├── build-captions.mjs             .vtt/.srt/.ttml cut from the real word timings
     ├── build-transcript.mjs           the plain-text transcript
     ├── build-audio-track.mjs          the audio-only rendition

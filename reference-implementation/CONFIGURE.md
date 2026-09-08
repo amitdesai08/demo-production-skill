@@ -71,9 +71,10 @@ the result with `node narrate.mjs --print-ssml <scene-id>` before spending Speec
 on `PATH`, or `DEMO_FFMPEG` / `DEMO_FFPROBE` pointing at a portable build. `capture.mjs`,
 `narrate.mjs`, `build-transcript.mjs` and `build-player.mjs` have no native dependency.
 
-Optional video tuning: `DEMO_VIDEO_WIDTH`, `DEMO_VIDEO_CRF`, `DEMO_VIDEO_ACCENT` (highlight
-colour), `DEMO_VIDEO_FONT`, `DEMO_VIDEO_TITLES=0` (no chapter titles) and
-`DEMO_VIDEO_TITLE_SECONDS`.
+Optional video tuning: `DEMO_VIDEO_WIDTH`, `DEMO_VIDEO_CRF`, `DEMO_VIDEO_FPS` (30 by default,
+because the pointer and title cards move), `DEMO_VIDEO_ACCENT` (highlight and title accent
+colour), `DEMO_VIDEO_TITLES=0` (no title cards), `DEMO_VIDEO_TITLE_SECONDS` and
+`DEMO_VIDEO_CURSOR=0` (no virtual pointer).
 
 ## 5. Screenshot resolution — verify it, don't just trust the defaults
 

@@ -31,12 +31,19 @@ For a **fresh-capture manifest** (a walkthrough or a lightning cut — anything 
 ```powershell
 node capture.mjs        --scenes scenes-<name>.mjs --manifest scenes-<name>.json
 node narrate.mjs        --manifest scenes-<name>.json [--force]   # see gotcha #2 below
+node build-cursor.mjs                                             # once per project
+node build-title-cards.mjs --manifest scenes-<name>.json          # re-run after retitling
 node build-player.mjs   --manifest scenes-<name>.json --out <name>.html
 node build-video.mjs    --manifest scenes-<name>.json --out <name>.mp4
 node build-captions.mjs --manifest scenes-<name>.json --out <name>   # .vtt/.srt/.ttml
 node build-transcript.mjs   --manifest scenes-<name>.json --out <name>
 node build-audio-track.mjs  --manifest scenes-<name>.json --out <name>
 ```
+
+`build-cursor.mjs` and `build-title-cards.mjs` render the overlay artwork the video composites
+— see [`on-screen-emphasis.md`](on-screen-emphasis.md). Both skip work when their output is
+already current, so they are cheap to leave in a rebuild script; the title cards re-render
+automatically when a scene's title changes.
 
 The last three are the accessible companion formats — see
 [`accessible-outputs.md`](accessible-outputs.md). Ship them with the video, not later.

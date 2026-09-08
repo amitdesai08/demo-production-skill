@@ -10,6 +10,8 @@
     "narrate": "node narrate.mjs",
     "player": "node build-player.mjs",
     "video": "node build-video.mjs",
+    "cursor": "node build-cursor.mjs",
+    "title-cards": "node build-title-cards.mjs",
     "captions": "node build-captions.mjs",
     "transcript": "node build-transcript.mjs",
     "audio-track": "node build-audio-track.mjs",
