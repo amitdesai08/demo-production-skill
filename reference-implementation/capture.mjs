@@ -15,9 +15,13 @@
 // scenes.example.mjs for a worked example. Do not fork this file to add product-specific logic.
 
 import { mkdir, writeFile, rm, readFile } from 'node:fs/promises';
+import { execFile } from 'node:child_process';
+import { promisify } from 'node:util';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { launch } from './lib/cdp.mjs';
+
+const execFileAsync = promisify(execFile);
 
 const arg = (flag, fallback) => {
   const i = process.argv.indexOf(flag);
@@ -46,13 +50,82 @@ const setActor = mod.setActor;
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const OUT = path.join(HERE, 'build');
 const SHOTS = path.join(OUT, 'shots');
+const CLIPS = path.join(OUT, 'clips');
 
 const WIDTH = Number(process.env.DEMO_WIDTH || 1440);
 const HEIGHT = Number(process.env.DEMO_HEIGHT || 900);
 const SCALE = Number(process.env.DEMO_SCALE || 2);
 
+// `--video` records each scene as the product is driven, instead of only screenshotting the
+// result, and build-video.mjs uses the clip in place of the still. Needs ffmpeg on PATH.
+//
+// Two CDP behaviours shape this. Frames arrive only when the page actually CHANGES, so a
+// clip's frame count reflects activity rather than elapsed time — which is why a scene that
+// merely sits there yields one frame and behaves exactly like the screenshot it replaces.
+// And the OS cursor is NOT captured, so the pointer is drawn by the video build; what the
+// recording contributes is the app's own response — hover states, panels opening, content
+// loading.
+const VIDEO = process.argv.includes('--video');
+// Optional map of scene id -> [{x,y,w,h}] naming exactly where the finished video will draw
+// its highlight. The recorded hover is aimed there rather than at the middle of whatever the
+// scene's spotlight selector resolved to, so the pointer and the highlight agree on screen
+// instead of landing on two different things.
+const AIM_FILE = arg('--aim', '');
+const AIMS = AIM_FILE
+  ? JSON.parse(await readFile(path.join(HERE, AIM_FILE), 'utf8')).aims || {}
+  : {};
+// A beat of stillness at each end of a clip, so a cut never lands mid-motion.
+const SETTLE_MS = 700;
+
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const js = (s) => JSON.stringify(String(s));
+
+// Cubic ease-out: quick off the mark, settling onto the target, the way a hand moves.
+const ease = (k) => 1 - (1 - k) ** 3;
+
+// Dispatches a real mouse path, so the app's own hover and focus states fire.
+async function glide(s, from, to, steps = 22) {
+  for (let i = 0; i <= steps; i++) {
+    const k = ease(i / steps);
+    await s.send('Input.dispatchMouseEvent', {
+      type: 'mouseMoved',
+      x: Math.round(from.x + (to.x - from.x) * k),
+      y: Math.round(from.y + (to.y - from.y) * k),
+      buttons: 0,
+    });
+    await sleep(22);
+  }
+}
+
+// Frame durations come from real arrival times; the encoder resamples to constant 30fps,
+// which holds the last picture through the stretches where nothing changed.
+//
+// Everything is re-based to the FIRST frame, and each held frame is capped. The recording
+// clock starts before the scene's setup steps run, and those can take a minute on a slow
+// screen — left alone that dead time lands inside the clip.
+async function encodeClip(id, frames, endAt) {
+  const base = frames[0].at;
+  const work = path.join(CLIPS, `_${id}`);
+  await rm(work, { recursive: true, force: true }).catch(() => {});
+  await mkdir(work, { recursive: true });
+
+  const lines = [];
+  for (const [i, f] of frames.entries()) {
+    const name = `f${String(i).padStart(5, '0')}.jpg`;
+    await writeFile(path.join(work, name), Buffer.from(f.data, 'base64'));
+    const at = f.at - base;
+    const next = frames[i + 1] ? frames[i + 1].at - base : Math.min(endAt - base, at + 1.2);
+    lines.push(`file '${name}'`, `duration ${Math.max(0.016, Math.min(next - at, 1.2)).toFixed(3)}`);
+  }
+  lines.push(`file 'f${String(frames.length - 1).padStart(5, '0')}.jpg'`);
+  await writeFile(path.join(work, 'list.txt'), lines.join('\n'), 'utf8');
+
+  await execFileAsync('ffmpeg', ['-y', '-loglevel', 'error', '-f', 'concat', '-safe', '0',
+    '-i', `"${path.join(work, 'list.txt')}"`, '-r', '30',
+    '-c:v', 'libx264', '-preset', 'medium', '-crf', '20', '-pix_fmt', 'yuv420p',
+    `"${path.join(CLIPS, `${id}.mp4`)}"`], { shell: true, maxBuffer: 1 << 26 });
+  await rm(work, { recursive: true, force: true }).catch(() => {});
+}
 
 // Helpers injected into the page. Text matching is how a person finds things on a screen, and
 // it survives a CSS refactor in a way a generated class name does not.
@@ -290,6 +363,7 @@ async function main() {
     await rm(SHOTS, { recursive: true, force: true }).catch(() => {});
   }
   await mkdir(SHOTS, { recursive: true });
+  if (VIDEO) await mkdir(CLIPS, { recursive: true });
 
   const s = await launch({
     width: WIDTH, height: HEIGHT, scale: SCALE,
@@ -306,12 +380,29 @@ async function main() {
 
   const state = { lastClick: null };
   const manifest = [];
+  // Carried between scenes so the recorded pointer continues rather than jumping.
+  let pointer = { x: Math.round(WIDTH * 0.5), y: Math.round(HEIGHT * 0.72) };
 
   try {
     for (const [i, scene] of list.entries()) {
       const label = `${String(i + 1).padStart(2, '0')}/${list.length} ${scene.id}`;
+      const frames = [];
+      let started = 0;
+      let offFrame = null;
+      const clock = () => (started ? (Date.now() - started) / 1000 : 0);
       try {
         if (scene.actor && setActor) await setActor(s, scene.actor, state);
+        if (VIDEO) {
+          started = Date.now();
+          offFrame = s.on('Page.screencastFrame', async (p) => {
+            frames.push({ at: (Date.now() - started) / 1000, data: p.data });
+            try { await s.send('Page.screencastFrameAck', { sessionId: p.sessionId }); } catch { /* closing */ }
+          });
+          await s.send('Page.startScreencast', {
+            format: 'jpeg', quality: 90, everyNthFrame: 1, maxWidth: WIDTH, maxHeight: HEIGHT,
+          });
+          await sleep(SETTLE_MS);
+        }
         await inject(s);
         for (const step of scene.steps || []) await runStep(s, step, state);
         await inject(s);
@@ -333,18 +424,52 @@ async function main() {
           ? await s.eval(`window.__demo.rect(window.__demo.resolve(${js(scene.click)}, false))`)
           : null;
 
+        // With the scene's state reached, move to what it is actually about, so the clip
+        // holds a real interaction rather than a screenshot of the aftermath. Hover only —
+        // no press is dispatched: the scene's own steps already perform the real clicks and
+        // those are recorded, whereas an extra click here lands on whatever the highlight
+        // frames, and on a nav or a link that navigates away and leaves every following
+        // scene looking at the wrong screen. The click the viewer sees is drawn by the
+        // video build.
+        let clip = null;
+        if (VIDEO) {
+          const rect = AIMS[scene.id]?.[0] || spotlight;
+          const aim = rect && {
+            x: Math.round(rect.x + Math.min(rect.w / 2, 160)),
+            y: Math.round(rect.y + Math.min(rect.h / 2, 90)),
+          };
+          if (aim && aim.x > 4 && aim.y > 4 && aim.x < WIDTH - 4 && aim.y < HEIGHT - 4) {
+            await glide(s, pointer, aim);
+            pointer = aim;
+            await sleep(900);
+          }
+          await sleep(SETTLE_MS);
+          const endAt = clock();
+          await s.send('Page.stopScreencast');
+          offFrame?.();
+          offFrame = null;
+          if (frames.length) {
+            await encodeClip(scene.id, frames, endAt);
+            clip = `clips/${scene.id}.mp4`;
+          }
+        }
+
         const file = `${scene.id}.png`;
-        await s.screenshot({ path: path.join(SHOTS, file) });
+        // A screenshot timeout must not throw away a clip that already encoded cleanly.
+        const shot = await s.screenshot({ path: path.join(SHOTS, file) })
+          .then(() => true).catch(() => false);
 
         manifest.push({
           id: scene.id, act: scene.act, title: scene.title, actor: scene.actor,
           say: scene.say.replace(/\s+/g, ' ').trim(),
           image: `shots/${file}`, spotlight,
           ...(spotlights.length > 1 ? { spotlights } : {}),
+          ...(clip ? { video: clip } : {}),
           click,
         });
-        console.log(`  ok  ${label}`);
+        console.log(`  ok  ${label}${clip ? `  (${frames.length} frames)` : ''}${shot ? '' : '  [no screenshot]'}`);
       } catch (e) {
+        offFrame?.();
         console.log(`  FAIL ${label} — ${e.message}`);
         manifest.push({
           id: scene.id, act: scene.act, title: scene.title, actor: scene.actor,

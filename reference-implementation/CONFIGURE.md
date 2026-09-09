@@ -68,7 +68,8 @@ the result with `node narrate.mjs --print-ssml <scene-id>` before spending Speec
 ## 4. ffmpeg, for the MP4, captions and audio track
 
 `build-video.mjs`, `build-captions.mjs` and `build-audio-track.mjs` need `ffmpeg` and `ffprobe`
-on `PATH`, or `DEMO_FFMPEG` / `DEMO_FFPROBE` pointing at a portable build. `capture.mjs`,
+on `PATH`, or `DEMO_FFMPEG` / `DEMO_FFPROBE` pointing at a portable build. `capture.mjs` needs
+ffmpeg too, but only in `--video` mode (see the skill's `references/live-capture.md`);
 `narrate.mjs`, `build-transcript.mjs` and `build-player.mjs` have no native dependency.
 
 Optional video tuning: `DEMO_VIDEO_WIDTH`, `DEMO_VIDEO_CRF`, `DEMO_VIDEO_FPS` (30 by default,

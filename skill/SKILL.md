@@ -34,6 +34,9 @@ This isn't a vague aspiration — it decomposes into specific, checkable things:
 6. **It ships watchable without sound and usable without sight** — captions cut from the real
    voice timings, a transcript, and an audio-only track, all built from the same source as the
    video — see [`references/accessible-outputs.md`](references/accessible-outputs.md).
+7. **Optionally, the product is recorded rather than screenshotted**, so the demo shows the
+   app responding instead of a slideshow of its screens — see
+   [`references/live-capture.md`](references/live-capture.md).
 7. **Three complementary assets, not one** — a full walkthrough, a short cut, and a runbook for
    a presenter who isn't the demo's author. See the model below.
 
@@ -167,6 +170,7 @@ demo-production/
 ├── SKILL.md                          you are here
 ├── references/
 │   ├── capture-quality.md             the calibrated screenshot-resolution bar and how to verify it
+│   ├── live-capture.md               recording the product being driven, instead of screenshotting it
 │   ├── scene-schema.md               generic step vocabulary + the CUSTOM_STEPS extension point
 │   ├── narration-style.md            the measurable natural-speech calibration bar
 │   ├── on-screen-emphasis.md         chapter titles + highlights cued to the spoken words
@@ -177,7 +181,7 @@ demo-production/
 │   └── external-resource-access.md   deciding whose credential captures a gated resource
 └── reference-implementation/          a working, generic, product-agnostic pipeline
     ├── CONFIGURE.md                   what to wire up for YOUR product (read this first)
-    ├── capture.mjs                    drives a real browser through your scenes
+    ├── capture.mjs                    drives a real browser through your scenes (--video to record it)
     ├── narrate.mjs                    Azure AI Speech narration + per-word timings
     ├── build-player.mjs               assembles the interactive HTML click-through
     ├── build-video.mjs                renders the scenes to an MP4, with titles, highlights and a cursor

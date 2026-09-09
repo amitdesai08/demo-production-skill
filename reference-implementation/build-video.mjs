@@ -288,6 +288,23 @@ async function main() {
     const spots = planSpotlights(scene, Number(hold), scaleRect);
     const base = [`scale=${WIDTH}:-2:flags=lanczos`, ...spotlightOverlay(spots, WIDTH, outH)];
 
+    // A recorded clip of the product being driven, when capture --video produced one;
+    // otherwise the still screenshot. Slide the recording so its tail — where the captured
+    // hover sits — arrives just as the narration reaches the point, then hold the last frame
+    // for the rest of the scene. The recorded pointer timing is deliberately not replayed:
+    // the drawn pointer is timed to the script, and the capture is aimed at the same
+    // rectangle, so the hover underneath and the pointer on top agree.
+    const clip = scene.video ? path.join(OUT, scene.video) : null;
+    let source = base.join(',');
+    if (clip) {
+      const clipSeconds = await seconds(ffprobe, clip);
+      const cueAt = spots.length ? spots[0].start : LEAD_IN_SILENCE + 1.2;
+      const shift = Math.max(0, cueAt - Math.max(0, clipSeconds - 0.4));
+      const endPad = Math.max(0, Number(hold) - shift - clipSeconds);
+      source = `${base.join(',')},tpad=start_duration=${shift.toFixed(2)}:start_mode=clone`
+        + `:stop_duration=${endPad.toFixed(2)}:stop_mode=clone,fps=${FPS}`;
+    }
+
     // The pointer carries over from where the previous scene left it, so it behaves like one
     // continuous session rather than teleporting to a new start position every cut.
     const plan = haveCursor && !scene.card ? cursorPath(spots, cursorAt, k) : null;
@@ -296,7 +313,7 @@ async function main() {
 
     // Inputs are 0 image, 1 audio, then the ripples, cursor and title PNGs in that order.
     const extra = [];
-    const chain = [`[0:v]${base.join(',')}[bg]`];
+    const chain = [`[0:v]${source}[bg]`];
     let tail = 'bg';
 
     // Ripples go under the pointer, so the pointer is never obscured by its own click. Each
@@ -325,7 +342,9 @@ async function main() {
 
     await run(ffmpeg, [
       '-y', '-loglevel', 'error',
-      '-loop', '1', '-framerate', String(FPS), '-i', `"${path.join(OUT, scene.image)}"`,
+      ...(clip
+        ? ['-i', `"${clip}"`]
+        : ['-loop', '1', '-framerate', String(FPS), '-i', `"${path.join(OUT, scene.image)}"`]),
       '-i', `"${path.join(OUT, scene.audio)}"`,
       ...extra.flat(),
       '-t', hold,

@@ -40,6 +40,11 @@ node build-transcript.mjs   --manifest scenes-<name>.json --out <name>
 node build-audio-track.mjs  --manifest scenes-<name>.json --out <name>
 ```
 
+Add `--video` to the capture to record the product being driven rather than screenshotting
+it; `build-video.mjs` then uses the clips automatically. See
+[`live-capture.md`](live-capture.md) — it needs ffmpeg at capture time and must be run over
+the whole scene list.
+
 `build-cursor.mjs` and `build-title-cards.mjs` render the overlay artwork the video composites
 — see [`on-screen-emphasis.md`](on-screen-emphasis.md). Both skip work when their output is
 already current, so they are cheap to leave in a rebuild script; the title cards re-render
