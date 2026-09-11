@@ -1,5 +1,14 @@
 # On-screen emphasis — chapter titles, cued highlights, and a virtual cursor
 
+## Contents
+- A pointer that behaves like a person
+- Titles that fly in
+- Highlights that follow the voice
+- What the video renderer can and cannot animate
+- Frame rate for motion
+- Coordinates
+- Configuration
+
 A screenshot of a dense product screen is not self-explanatory. While the narration makes a
 point about one panel, the viewer is looking at forty other things. And a sequence of still
 screenshots, however well annotated, reads as a diagram rather than as somebody using the

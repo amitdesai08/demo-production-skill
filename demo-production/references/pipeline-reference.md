@@ -1,5 +1,15 @@
 # Production pipeline — exact commands and gotchas
 
+## Contents
+- Prerequisites
+- The full command set, per manifest
+- Gotcha #1 — a bare `capture.mjs` wipes the screenshots folder
+- Gotcha #2 — `narrate.mjs` caches by file existence, not content
+- Gotcha #2b — scan the build output for `!`
+- Gotcha #3 — `narrate.mjs` reads the captured JSON, not the source `.mjs`
+- Order of operations, summarised
+- After the build: shipping it
+
 These commands assume you've copied `reference-implementation/` into your project (or are
 running it from wherever you placed it) and followed `reference-implementation/CONFIGURE.md`.
 

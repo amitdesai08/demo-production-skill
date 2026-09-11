@@ -1,0 +1,33 @@
+name: validate
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  skill:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Validate the skill against the Agent Skills requirements
+        run: node scripts/validate-skill.mjs
+
+      # The installer is the first thing anyone runs, so a break here is the most expensive
+      # kind: it fails for someone else, on their machine, before they have any context.
+      - name: Install into a throwaway repo
+        run: |
+          target="$(mktemp -d)"
+          ./install.sh --target-repo "$target" --target all
+          test -f "$target/.github/skills/demo-production/SKILL.md"
+          test -f "$target/.claude/skills/demo-production/SKILL.md"
+          test -f "$target/.agents/skills/demo-production/references/scene-schema.md"
+
+      - name: Check the reference implementation parses
+        working-directory: reference-implementation
+        run: for f in *.mjs lib/*.mjs; do node --check "$f"; done

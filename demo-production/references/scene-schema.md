@@ -1,5 +1,13 @@
 # Scene manifest schema and the generic step vocabulary
 
+## Contents
+- Scene object shape
+- The generic step vocabulary built into the engine
+- Scrolling: the page is often not what scrolls
+- Extending with custom steps
+- Verifying real on-screen text before writing a spec
+- `spotlight`/`click` only draw — they do not act
+
 A scene manifest is a `scenes.mjs` (or `scenes-<name>.mjs`) ES module. Copy
 `reference-implementation/scenes.example.mjs` to start one. It exports:
 

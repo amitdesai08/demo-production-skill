@@ -1,5 +1,15 @@
 # Narration style — the calibrated natural-speech bar
 
+## Contents
+- Why this is measurable, not a matter of taste
+- Grading pauses instead of making them uniform
+- Staging carried by the words, not just the markup
+- Fixing a word the voice says wrong
+- Expressiveness: contour without editorialising
+- Calibrating your own bar
+- The other narration rules
+- Applying this to an edit, not just a fresh write
+
 The narration is meant to sound like someone actually talking through a product, not a
 document being read aloud. Below is the mechanical, measurable process that keeps narration at
 that bar, instead of relying on "it sounds fine to me."

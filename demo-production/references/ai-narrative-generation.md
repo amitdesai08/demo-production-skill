@@ -1,5 +1,12 @@
 # AI-generated demo narrative — the fast path
 
+## Contents
+- When to reach for this instead of a full track
+- Decide vs. ask — what has a sensible default
+- What the agent actually does
+- Output format (acts, scenes, style audit)
+- Handing it off to a capture
+
 A full track (walkthrough + lightning + runbook, all three narrated and captured) is a
 production run. Most of the time what's actually wanted first is much smaller: **a script** —
 the act structure and the scene-by-scene narration lines — that a human can read, correct and

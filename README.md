@@ -13,78 +13,117 @@ you wire up to whatever you're demoing — see `reference-implementation/CONFIGU
 ## What's in here
 
 ```
-demo-production-skill/
-├── skill/                      the Copilot skill itself
-│   ├── SKILL.md
-│   └── references/
-│       ├── capture-quality.md
-│       ├── scene-schema.md
-│       ├── narration-style.md
-│       ├── new-track-guide.md
-│       └── pipeline-reference.md
-├── reference-implementation/    a working, product-agnostic capture/narrate/build pipeline
-│   ├── CONFIGURE.md             read this first — the 4 things to wire up for your product
-│   ├── capture.mjs
-│   ├── narrate.mjs
-│   ├── build-player.mjs
-│   ├── build-video.mjs
-│   ├── build-cut.mjs
-│   ├── scenes.example.mjs
-│   ├── cuts.example.mjs
-│   ├── package.json
-│   └── lib/cdp.mjs
-└── install.ps1                  copies the skill into another repo
+demo-production/            the skill — this folder name matches SKILL.md's `name:`
+├── SKILL.md                 the decision flow; everything else loads on demand
+└── references/              10 topic files, each linked directly from SKILL.md
+    ├── ai-narrative-generation.md   the story on its own, before any capture
+    ├── new-track-guide.md           audience research + act structure
+    ├── narration-style.md           the measurable natural-speech bar
+    ├── scene-schema.md              manifest shape + step vocabulary
+    ├── capture-quality.md           real-resolution capture, verified
+    ├── live-capture.md              recording the product being driven
+    ├── on-screen-emphasis.md        cursor, highlights, chapter titles
+    ├── accessible-outputs.md        captions, transcripts, audio description
+    ├── pipeline-reference.md        exact commands and the traps
+    └── external-resource-access.md  whose credential captures a gated resource
+
+reference-implementation/   a working, product-agnostic capture → narrate → build pipeline
+├── CONFIGURE.md             read this first — the four things to wire up
+├── example/                 a tiny sample app, so the pipeline can be proven before it
+│                           touches anything of yours
+└── example-azure/           the same, against a real Azure portal sign-in
+
+scripts/validate-skill.mjs  checks the skill against the Agent Skills requirements
+install.ps1 / install.sh    copy it into a repo, or into your own skills folder
 ```
 
 ## Installing the skill into a project
 
 ### Option A — personal, across all your own repos (simplest)
 
-Copy `skill/` to your personal skills folder once, and it's available in every workspace you
-open, in this and future sessions — pick whichever tool(s) you use:
+One command, and it is available in every workspace you open, now and in future sessions:
 
-```powershell
-# GitHub Copilot
-Copy-Item -Recurse -Force "path\to\demo-production-skill\skill" "$HOME\.agents\skills\demo-production"
-# Claude Code
-Copy-Item -Recurse -Force "path\to\demo-production-skill\skill" "$HOME\.claude\skills\demo-production"
+```bash
+./install.sh --personal      # macOS / Linux
 ```
+```powershell
+./install.ps1 -Personal      # Windows
+```
+
+That writes to `~/.agents/skills/`, `~/.claude/skills/` and `~/.copilot/skills/`. The files
+are identical, so the skill is there whichever tool you happen to open.
 
 ### Option B — shared with a team, per project
 
 Clone or download this repo, then run the installer from inside it, pointing at the target
 project:
 
+```bash
+./install.sh --target-repo ../some-project                              # .github/skills
+./install.sh --target-repo ../some-project --target claude              # Claude Code
+./install.sh --target-repo ../some-project --target all --with-reference-implementation
+```
 ```powershell
-./install.ps1 -TargetRepo "C:\path\to\some-other-project" [-WithReferenceImplementation]
-./install.ps1 -TargetRepo "C:\path\to\some-other-project" -Target claude   # for Claude Code
-./install.ps1 -TargetRepo "C:\path\to\some-other-project" -Target all      # every convention at once
+./install.ps1 -TargetRepo ../some-project
+./install.ps1 -TargetRepo ../some-project -Target claude
+./install.ps1 -TargetRepo ../some-project -Target all -WithReferenceImplementation
 ```
 
-`-Target` defaults to `github` (`.github/skills/demo-production`, what Copilot reads) and
+The target defaults to `github` (`.github/skills/demo-production`, what Copilot reads) and
 also accepts `claude` (`.claude/skills/`), `agents` (`.agents/skills/`, a shared convention
-several tools read) or `all`. This copies `skill/` to `<target>\<convention>\demo-production\`
-so any teammate's session in that repo picks it up automatically once committed, and — if
-`-WithReferenceImplementation` is passed — also copies `reference-implementation/` to
-`<target>\demo\` as a starting point. Commit both into the target repo.
+several tools read) or `all`. Adding the reference implementation also copies it to
+`<target>/demo/` as a starting point. Commit the result and every teammate picks it up on
+their next pull.
 
 ### Option C — manual copy
 
-There's no tooling dependency here beyond plain files — copy `skill/` into any of the
-locations a Copilot session checks for skills (`.github/skills/<name>/`,
-`.agents/skills/<name>/`, `.claude/skills/<name>/` for a project; `~/.copilot/skills/<name>/`,
-`~/.agents/skills/<name>/`, `~/.claude/skills/<name>/` for yourself only), keeping the folder
-name `demo-production` to match `SKILL.md`'s own `name:` field.
+No tooling dependency beyond plain files — copy the `demo-production/` folder into any of the
+locations an agent session checks (`.github/skills/`, `.agents/skills/`, `.claude/skills/` for
+a project; `~/.copilot/skills/`, `~/.agents/skills/`, `~/.claude/skills/` for yourself).
+**Keep the folder name.** Every runtime addresses a skill by its directory, and it has to
+match the `name:` in `SKILL.md`.
 
 ## Using it
 
-Once installed, ask your Copilot session things like "build a technical-audience demo for
-this product," "add a lightning cut to our existing walkthrough," or "the narration on our
-demo sounds stilted, fix it" — the skill's description is written to be discovered by prompts
-like these. See `skill/SKILL.md` for the full decision flow.
+Ask for the thing you want, not for the skill:
+
+- "build a technical-audience demo for this product"
+- "add a lightning cut to our existing walkthrough"
+- "the narration on our demo sounds stilted, fix it"
+- "add captions and a transcript to the demo"
+
+The `description` is written so these phrasings trigger it. From there `SKILL.md` drives the
+workflow and pulls in only the reference files a given step needs.
+
+## Trying it without a real product
+
+The reference implementation ships a small sample app, so the pipeline can be proven end to
+end before it touches anything of yours:
+
+```bash
+cd reference-implementation
+npm install
+node example/app/serve.mjs &
+node capture.mjs --scenes example/scenes.mjs
+```
+
+Then follow [`CONFIGURE.md`](reference-implementation/CONFIGURE.md) to point it at your own
+product. Narration needs an Azure AI Speech resource and the video build needs ffmpeg;
+neither is required to produce the interactive click-through.
+
+## Developing it
+
+```bash
+node scripts/validate-skill.mjs
+```
+
+This checks the documented requirements rather than preferences: frontmatter field limits,
+the 500-line body budget, that every reference file is reachable directly from `SKILL.md`,
+that long references carry a table of contents, and that no path uses backslashes. CI runs it
+on every push, along with a real install into a throwaway repo — a broken installer is the
+one failure that shows up on somebody else's machine instead of yours.
 
 ## Keeping this updated
 
-This repo is the source of truth. If you improve the methodology or the reference pipeline,
-update it here and re-run `install.ps1` (or re-copy `skill/`) into any project that installed
-an earlier copy.
+This repo is the source of truth. Improve the methodology or the pipeline here, then re-run
+the installer anywhere an older copy landed.

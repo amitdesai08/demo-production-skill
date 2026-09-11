@@ -1,5 +1,12 @@
 # Deciding access — whose credential captures the demo
 
+## Contents
+- When this applies
+- Decision procedure, in order
+- Two ways to get access, and when to use which
+- Saying so in the demo itself
+- Quick recap
+
 Capturing a real, gated product or resource means **doing something against it under some
 identity** — there is no scripted-login shortcut, and this skill has no standing access to
 anything by default. So before writing a single capture step, decide **whose** credential the
