@@ -105,6 +105,31 @@ for (const rel of ['SKILL.md', ...refs.map((r) => `references/${r}`)]) {
 
 notes.push(`skill "${name}" — ${bodyLines}-line body, ${refs.length} reference files, ${desc.length}-char description`);
 
+// --- documentation that lists the reference files ---------------------------
+// Both SKILL.md and the README draw a file tree, and both have already gone stale twice:
+// they said ten references when there were twelve. A hand-maintained list of files is a
+// promise about the filesystem, so check it against the filesystem.
+const known = new Set(refs);
+function checkListing(label, absPath, text) {
+  const listed = new Set(
+    [...text.matchAll(/[├└]──\s+([a-z0-9-]+\.md)/g)].map((m) => m[1]).filter((f) => known.has(f)),
+  );
+  const missing = refs.filter((f) => !listed.has(f));
+  if (missing.length) fail(`${label} does not list: ${missing.join(', ')}`);
+
+  // A stated count is the same promise in numeric form, and drifts the same way.
+  const claimed = /(\d+)\s+(?:topic|reference)\s+files/i.exec(text);
+  if (claimed && Number(claimed[1]) !== refs.length) {
+    fail(`${label} claims ${claimed[1]} reference files, but there are ${refs.length}`);
+  }
+}
+
+checkListing('SKILL.md package listing', join(SKILL_DIR, 'SKILL.md'), body);
+const readmePath = join(ROOT, 'README.md');
+if (existsSync(readmePath)) {
+  checkListing('README.md file tree', readmePath, readFileSync(readmePath, 'utf8'));
+}
+
 for (const n of notes) console.log(n);
 if (problems.length) {
   console.error(`\n${problems.length} problem(s):`);
