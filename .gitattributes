@@ -1,0 +1,11 @@
+# Shell scripts must keep LF endings whatever a contributor's core.autocrlf is set to.
+# A CRLF shebang fails on Linux with "bad interpreter", which reads like a missing program
+# rather than a line-ending problem.
+*.sh text eol=lf
+
+# Normalise text so diffs stay clean across platforms.
+*.md text
+*.mjs text
+*.json text
+*.yml text
+*.ps1 text
