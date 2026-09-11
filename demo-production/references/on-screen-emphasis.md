@@ -1,6 +1,12 @@
 # On-screen emphasis — chapter titles, cued highlights, and a virtual cursor
 
 ## Contents
+- The rule everything else follows
+- Rest is the default state
+- One script drives both
+- Positional alignment — cue *i* binds to region *i*
+- Cue timing: three traps
+- Highlights move; they do not multiply
 - A pointer that behaves like a person
 - Titles that fly in
 - Highlights that follow the voice
@@ -18,6 +24,127 @@ discussed**, and a pointer that travels to that region and arrives as the highli
 
 All three are rendered by `build-video.mjs` from data the pipeline already has, so none needs
 a video editor and none goes stale independently of the narration.
+
+## The rule everything else follows
+
+**A highlight and a pointer are different instruments, and conflating them is what makes a
+demo feel synthetic.**
+
+- The **highlight** is the narrator's emphasis. It can frame anything worth looking at — a
+  panel, a paragraph, a badge, a row.
+- The **pointer** is somebody's hand. It goes where a hand would go: a control being used, an
+  item singled out from identical siblings, something you would open. Nothing else.
+
+A person does not drag their mouse to the middle of a paragraph they are reading aloud. Move
+the cursor to every highlight and the demo still reads as mechanical, even when each move is
+individually justifiable.
+
+**The win condition is mimicking human interaction. It is not a number of gestures.** Counting
+them is how you end up back at a busy cursor with better excuses. A five-minute demo with four
+deliberate pointer moves and a dozen highlight-only moments is richer than one with twenty
+moves, because each of the four means something.
+
+## Rest is the default state
+
+A scene with nothing to point at rests. That is not a gap to be filled.
+
+Three mechanisms are worth naming because they are individually reasonable and collectively
+disastrous — each solves a real problem, and together they produce exactly the "cursor
+wandering for no reason" complaint:
+
+1. **A page tour** for scenes with no cue — hunting the DOM for anything that would repaint and
+   hovering it in sequence, usually invented to stop the screencast going quiet.
+2. **Idle drift** — nudging the pointer a few pixels every second so it "looks alive".
+3. **A settle-back glide** — using up leftover scene time by returning to the last region.
+
+Delete all three. Frames going quiet is correct (see [`live-capture.md`](live-capture.md)); it
+is not a problem to be worked around. Give a cue-less scene one park position — low and to one
+side, out of the reading area — and have it move there once and stay, guarded by a distance
+check so consecutive resting scenes do not re-park.
+
+## One script drives both
+
+The pointer and the highlight must come from a single source, or they will disagree on screen:
+
+```
+cue phrases (a phrase per region, per scene)
+   → resolved against the REAL per-word timestamps from speech synthesis
+plan file: { cues: { scene: [seconds] }, points: { scene: [indices] } }
+   → capture moves the pointer at those seconds and records the moment
+   → the video build draws the highlight from those same recorded moments
+```
+
+`cues` says *when* each region is spoken about. `points` says which of those the **hand** takes
+part in; everything else is highlight-only and the cursor does not move. Keeping `points` short
+is the whole reason they are separate.
+
+Cue times are **narration-relative**, which makes them survive a script edit: re-resolve the
+phrase against the new word timings and both instruments follow.
+
+A selector that names its own text (`text:Daily briefing`) can derive its cue automatically.
+Expect that to cover only some of them — good narration paraphrases the interface instead of
+reading labels aloud, so most cues have to be written from the scene's own line.
+
+## Positional alignment — cue *i* binds to region *i*
+
+This is the most dangerous property in the design, because breaking it produces working
+choreography aimed at the wrong things.
+
+- **Never compact the region list.** Filtering out an unusable region renumbers everything
+  after it and silently re-aims every later cue.
+- An unresolvable selector **holds its place as null** and is reported by name.
+- A region deliberately cued elsewhere gets a **null phrase**, not a missing entry. Make an
+  explicit null distinguishable from an absent one, or "this region gets no highlight" is
+  indistinguishable from "nobody said".
+
+Assert `regions == phrases == resolved times` per scene. It costs nothing and catches the case
+where someone adds a region and forgets its phrase.
+
+## Cue timing: three traps
+
+1. **Measure elapsed on the clip's clock, not the choreography's own start.** Cue times are
+   relative to the start of the clip. Any scene whose setup runs on camera will otherwise fire
+   every highlight late by exactly the setup duration — 11s and 12s in two real cases, landing
+   well after the narration had moved on.
+2. **Release overdue cues in sequence.** If setup overruns a scene's early cues they all become
+   due at once and fire together: two highlights on screen instead of one moving to the next.
+   Enforce a minimum gap — `max(cueTime, lastMark + 1.5)`.
+3. **Fixed `wait:` steps are usually the real culprit.** In one measured case a scene had
+   `wait 4000` and `wait 3000` between a state change and the choreography starting: seven
+   seconds of stopwatch for work that took under one. Replacing them with conditions (`waitJs`
+   on something that has to become true) took setup from 12.2s to 6.2s and the first cue's lag
+   from +8.2s to +2.4s.
+
+A healthy first-cue lag is about **−0.4s** — the deliberate lead, the pointer arriving just
+before the phrase. A large *negative* lag is normal on scenes with a real click: the click's
+own highlight precedes the spoken cue.
+
+## Highlights move; they do not multiply
+
+Give every highlight a dwell, then **truncate each at the start of the next**. Without this,
+consecutive highlights overlap and two boxes appear at once. On a control that shifts position
+between them, that reads as one box split across two things.
+
+Mind the size floors. A rectangle filter that rejects small regions will silently drop the
+highlight on a badge or a dropdown, which are legitimately about 30px tall — and if the floor
+exists in more than one place, fixing one and rebuilding looks like the fix did nothing.
+
+### A control that changes shape needs two measurements
+
+A selector's text and its geometry do not change at the same time. Setting a `<select>`'s value
+updates its text immediately; the surrounding layout only shifts when the component re-renders,
+often half a second later. One rect cannot fit both states. Three capabilities make this
+correct, and all three are generally useful:
+
+- **`point`** — glide the pointer to a target and record the highlight *during setup*. Without
+  it, a change the narration attributes to a control can never be pointed at before it happens,
+  because the choreography only starts once setup is done.
+- **`clearHighlight`** — end the current highlight at an exact moment. The text changes before
+  the layout does, so the old box must come off when the *name* changes, not when the *layout*
+  settles. A brief gap with no box beats a box around the wrong thing.
+- **`waitMoved`** — wait until the target's own geometry changes. Text-based repaint signals are
+  guesses about which words survive a re-render; in one case the chosen phrase persisted after
+  the change and the wait timed out. Asking the element directly cannot be fooled that way.
 
 ## A pointer that behaves like a person
 
@@ -43,11 +170,11 @@ reads as a presentation prop.
 Set `DEMO_VIDEO_CURSOR=0` to render without it. A scene with no highlights gets no pointer,
 so an opening or summary scene stays still.
 
-**What this is not.** The screenshots are stills, so the interface does not visibly respond
-to the click within the scene — the *next* scene shows the result. That reads as cause and
-effect and is a long-standing click-through convention, but it is not the same thing as a
-screen recording, where content streams in and panels open live. If a demo genuinely needs
-that, it needs video capture, not this pipeline.
+**What this is not.** Over *still* screenshots the interface does not visibly respond to the
+click within the scene — the *next* scene shows the result. That reads as cause and effect and
+is a long-standing click-through convention. When a demo needs the interface to respond within
+the scene, record it: see [`live-capture.md`](live-capture.md), which swaps the still for a
+clip and leaves every overlay described here unchanged.
 
 ## Titles that fly in
 

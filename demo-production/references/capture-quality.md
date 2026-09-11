@@ -71,3 +71,26 @@ screenshot is taken at — `Emulation.setDeviceMetricsOverride` still governs th
 whether the window itself is visible on your screen or not. Don't confuse "I can see the
 browser window and it looks small on my monitor" with "the capture is low-resolution" — check
 the actual PNG dimensions as above if you're ever unsure.
+
+## Headed capture: the window is the frame, so size the window
+
+The paragraph above holds while the metrics override is in charge. It stops holding the moment
+the window itself is what gets filmed — a **headed** run, needed whenever a real sign-in or a
+host application is involved. There the override is actively harmful: it renders the page at a
+size the window does not have, so the capture does not match what is on screen.
+
+Do not declare a size. Measure what the browser chrome costs and set the window so the *page*
+lands on the target:
+
+1. Fill the screen once and compare the window size to `window.innerWidth/innerHeight` — the
+   difference is the chrome.
+2. Set the window to `target + chrome`, then re-measure and correct. Two or three iterations
+   converge exactly.
+3. If the screen cannot fit the request, **keep the aspect ratio** and scale down.
+
+Aspect ratio matters more than size here. The video is 16:9, and a window of another shape gets
+scaled to width and cropped from the top — so it is the bottom of the app that is lost. A
+1710×1307 window (roughly 4:3) would have cost ~390px off the bottom of the content.
+
+Do not let the profile's remembered bounds decide this either: "whatever it was last time" is
+not a specification, and it silently changes between runs.
