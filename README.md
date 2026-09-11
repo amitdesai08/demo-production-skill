@@ -10,18 +10,67 @@ narration-quality calibration, the three-asset model) is entirely generic. The
 `reference-implementation/` folder is a small, working pipeline (capture → narrate → build)
 you wire up to whatever you're demoing — see `reference-implementation/CONFIGURE.md`.
 
+## New to this? Read this bit first
+
+**What a "skill" is.** A folder of markdown files that teaches your AI coding assistant how to
+do one job properly. You install it once. After that, your assistant reads it automatically
+whenever you ask for something it covers. There is no command to run, no button, and nothing
+to import in your code.
+
+**What that means here.** You do not have to learn this pipeline. *You* describe the demo you
+want in plain English; the assistant is the one that reads the instructions, writes the scene
+file, runs the capture, and builds the video. Your job is to point it at a product, answer a
+couple of questions, and review what comes out.
+
+**The whole thing, start to finish:**
+
+1. **Install it** (one command, below). This copies files into a folder your assistant reads.
+2. **Open your project** in VS Code with Copilot, or in Claude Code.
+3. **Ask for what you want**, in your own words:
+   > "Build a demo of this app for a technical audience."
+
+   The assistant takes it from there — it will tell you if it needs something it cannot find.
+
+If nothing seems to happen, see [When it doesn't trigger](#when-it-doesnt-trigger) at the end.
+
+### What you get
+
+For each audience you ask for, three things that stay in step with each other:
+
+| Output | What it is |
+|---|---|
+| **Interactive click-through** | An `.html` file: real screens, narrated, click to advance. Opens in any browser, no install. |
+| **Narrated MP4** | The same demo as a video, with captions, a transcript and an audio-only track. |
+| **Presenter script** | A markdown file a colleague can read from while driving the product live. |
+
+### What you need, and when
+
+Nothing is required to *install* the skill. These are needed only when you actually build:
+
+| Thing | Needed for | If you don't have it |
+|---|---|---|
+| [Node.js](https://nodejs.org) **22 or later** | Everything | Install it first — it is the only hard requirement. Older versions fail with `WebSocket is not defined`, which does not look like a version problem. |
+| A running copy of your product | Capturing screens | The assistant can run it locally for you if the repo supports that. |
+| An [Azure AI Speech](https://azure.microsoft.com/products/ai-services/ai-speech) resource | The voiceover | Skip it — you still get the click-through and the script, just no audio. |
+| [ffmpeg](https://ffmpeg.org/download.html) | The MP4 | Skip it — the click-through does not need it. |
+
+So the smallest useful setup is **Node plus something to demo**. Add Speech and ffmpeg when you
+want the video.
+
 ## What's in here
 
 ```
 demo-production/            the skill — this folder name matches SKILL.md's `name:`
 ├── SKILL.md                 the decision flow; everything else loads on demand
-└── references/              10 topic files, each linked directly from SKILL.md
+└── references/              12 topic files, each linked directly from SKILL.md
+    ├── demo-intake.md               turning a repo/URL/resource into something capturable
     ├── ai-narrative-generation.md   the story on its own, before any capture
     ├── new-track-guide.md           audience research + act structure
     ├── narration-style.md           the measurable natural-speech bar
     ├── scene-schema.md              manifest shape + step vocabulary
     ├── capture-quality.md           real-resolution capture, verified
     ├── live-capture.md              recording the product being driven
+    ├── hosted-app-capture.md        filming an app inside Teams, a portal or an iframe
     ├── on-screen-emphasis.md        cursor, highlights, chapter titles
     ├── accessible-outputs.md        captions, transcripts, audio description
     ├── pipeline-reference.md        exact commands and the traps
@@ -85,20 +134,49 @@ match the `name:` in `SKILL.md`.
 
 ## Using it
 
-Ask for the thing you want, not for the skill:
+Ask for the thing you want, not for the skill. You never name it or invoke it — your assistant
+matches your request against what the skill says it is for.
 
 - "build a technical-audience demo for this product"
+- "demo this repo"
 - "add a lightning cut to our existing walkthrough"
 - "the narration on our demo sounds stilted, fix it"
 - "add captions and a transcript to the demo"
 
-The `description` is written so these phrasings trigger it. From there `SKILL.md` drives the
-workflow and pulls in only the reference files a given step needs.
+**What happens next.** The assistant works out what it is looking at, gets it running, and
+asks you only what it genuinely cannot determine — usually which audience the demo is for.
+Expect it to show you the **script first**, before spending any capture or voice budget, so you
+can correct the story while it is still cheap to change. Say so if you would rather it just
+built the whole thing.
+
+**You stay in control of anything that costs or writes.** It will not sign in as you, take a
+password in chat, or click through a live system without saying so first.
+
+## When it doesn't trigger
+
+If you ask and your assistant answers normally instead of building a demo, work down this list:
+
+1. **Is it installed where your tool looks?** Copilot reads `.github/skills/` in the project
+   and `~/.copilot/skills/` for you personally; Claude Code reads `.claude/skills/` and
+   `~/.claude/skills/`. Running the installer with `--personal` covers all of them.
+2. **Is the folder named `demo-production`?** The name must match the `name:` inside
+   `SKILL.md`. Renaming the folder breaks it.
+3. **Start a new chat.** Skills are picked up when a session starts, so one already running
+   will not see a skill you just installed.
+4. **Say more of what you want.** "Help me with this" matches nothing. "Build a narrated demo
+   of this app" matches clearly.
+5. **Check it is valid** by running `node scripts/validate-skill.mjs` from this repo. That
+   reports anything structurally wrong with the skill itself.
+
+If a *build* fails rather than the skill not triggering, the assistant will show the error.
+The most common causes are Node not installed, the product not running, or ffmpeg missing for
+the MP4 step — all covered in the requirements table above.
 
 ## Trying it without a real product
 
 The reference implementation ships a small sample app, so the pipeline can be proven end to
-end before it touches anything of yours:
+end before it touches anything of yours. This is also the fastest way to see what the output
+looks like:
 
 ```bash
 cd reference-implementation
@@ -106,6 +184,9 @@ npm install
 node example/app/serve.mjs &
 node capture.mjs --scenes example/scenes.mjs
 ```
+
+That writes screenshots to `build/shots/`. Add narration and build the click-through with
+`node narrate.mjs` then `node build-player.mjs`, and open the `.html` it produces.
 
 Then follow [`CONFIGURE.md`](reference-implementation/CONFIGURE.md) to point it at your own
 product. Narration needs an Azure AI Speech resource and the video build needs ffmpeg;
