@@ -31,3 +31,18 @@ jobs:
       - name: Check the reference implementation parses
         working-directory: reference-implementation
         run: for f in *.mjs lib/*.mjs; do node --check "$f"; done
+
+  windows-installer:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Install with Windows PowerShell 5.1
+        shell: powershell
+        run: |
+          $target = Join-Path $env:RUNNER_TEMP 'demo-production-install-test'
+          New-Item -Path $target -ItemType Directory -Force | Out-Null
+          ./install.ps1 -TargetRepo $target -Target all
+          if (-not (Test-Path "$target/.github/skills/demo-production/SKILL.md")) { throw 'GitHub skill was not installed' }
+          if (-not (Test-Path "$target/.claude/skills/demo-production/SKILL.md")) { throw 'Claude skill was not installed' }
+          if (-not (Test-Path "$target/.agents/skills/demo-production/references/scene-schema.md")) { throw 'Agents skill was not installed' }

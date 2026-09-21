@@ -55,7 +55,7 @@ if (-not (Test-Path -Path $TargetRepo -PathType Container)) {
     throw "Target repo folder not found: $TargetRepo"
 }
 # Any Copilot-, Claude Code-, or Agents-compatible session in the target repo reads its own
-# convention — installing to more than one costs nothing (same files, three folder names).
+# convention - installing to more than one costs nothing (same files, three folder names).
 $folders = switch ($Target) {
     'github' { @('.github/skills') }
     'claude' { @('.claude/skills') }
@@ -72,7 +72,7 @@ foreach ($folder in $folders) {
 if ($WithReferenceImplementation) {
     $demoDest = Join-Path $TargetRepo 'demo'
     if ((Test-Path $demoDest) -and -not $Force) {
-        Write-Warning "$demoDest already exists — skipping (pass -Force to overwrite it too)."
+        Write-Warning "$demoDest already exists - skipping (pass -Force to overwrite it too)."
     } else {
         if (Test-Path $demoDest) { Remove-Item -Path $demoDest -Recurse -Force }
         New-Item -Path $demoDest -ItemType Directory -Force | Out-Null
