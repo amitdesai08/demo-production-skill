@@ -1,9 +1,12 @@
 # demo-production-skill
 
-A portable GitHub Copilot skill (and a working reference implementation) for building
-high-quality narrated product demos: real screenshots of a running product, calibrated
-natural-sounding voiceover, and three ready-to-use assets per audience — an interactive
-click-through, an MP4, and a markdown script a live presenter can read from.
+A portable Agent Skill (and a working reference implementation) for building high-quality
+narrated product demos: real screenshots of a running product, calibrated natural-sounding
+voiceover, and three ready-to-use assets per audience — an interactive click-through, an MP4,
+and a markdown script a live presenter can read from.
+
+**Works with [Microsoft Copilot Cowork](#option-d-microsoft-copilot-cowork), GitHub Copilot,
+Claude Code, and other Agent Skills-compatible assistants.**
 
 **No dependency on any specific product or platform.** The methodology (audience research,
 narration-quality calibration, the three-asset model) is entirely generic. The
@@ -132,7 +135,7 @@ a project; `~/.copilot/skills/`, `~/.agents/skills/`, `~/.claude/skills/` for yo
 **Keep the folder name.** Every runtime addresses a skill by its directory, and it has to
 match the `name:` in `SKILL.md`.
 
-### Option D — Microsoft Copilot Cowork
+### Option D: Microsoft Copilot Cowork
 
 Cowork supports the same [Agent Skills open standard](https://learn.microsoft.com/microsoft-365/copilot/cowork/cowork-plugin-development#cross-platform-compatibility),
 so the `demo-production/` skill works without rewriting its instructions.
