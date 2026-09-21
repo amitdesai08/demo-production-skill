@@ -12,7 +12,7 @@ you wire up to whatever you're demoing — see `reference-implementation/CONFIGU
 
 ## New to this? Read this bit first
 
-**What a "skill" is.** A folder of markdown files that teaches your AI coding assistant how to
+**What a "skill" is.** A folder of markdown files that teaches your AI assistant how to
 do one job properly. You install it once. After that, your assistant reads it automatically
 whenever you ask for something it covers. There is no command to run, no button, and nothing
 to import in your code.
@@ -25,7 +25,7 @@ couple of questions, and review what comes out.
 **The whole thing, start to finish:**
 
 1. **Install it** (one command, below). This copies files into a folder your assistant reads.
-2. **Open your project** in VS Code with Copilot, or in Claude Code.
+2. **Open your project** in VS Code with Copilot or Claude Code, or start a Cowork session.
 3. **Ask for what you want**, in your own words:
    > "Build a demo of this app for a technical audience."
 
@@ -132,6 +132,42 @@ a project; `~/.copilot/skills/`, `~/.agents/skills/`, `~/.claude/skills/` for yo
 **Keep the folder name.** Every runtime addresses a skill by its directory, and it has to
 match the `name:` in `SKILL.md`.
 
+### Option D — Microsoft Copilot Cowork
+
+Cowork supports the same [Agent Skills open standard](https://learn.microsoft.com/microsoft-365/copilot/cowork/cowork-plugin-development#cross-platform-compatibility),
+so the `demo-production/` skill works without rewriting its instructions.
+
+To upload it:
+
+1. Create a `.zip` whose root contains `SKILL.md` and the `references/` folder. Do not wrap
+   them in an extra `demo-production/` directory inside the archive.
+2. In Cowork, select **+** > **Customize** > **Skills**.
+3. Select the arrow next to **Add**, select **Upload skill**, and choose the `.zip`.
+4. Wait for it to appear under **Your skills**, then start a new Cowork session.
+
+Create the correctly rooted archive from this repository with either command:
+
+```powershell
+Set-Location demo-production
+Compress-Archive -Path SKILL.md,references -DestinationPath ../demo-production-cowork.zip -Force
+```
+
+```bash
+(cd demo-production && zip -r ../demo-production-cowork.zip SKILL.md references)
+```
+
+Alternatively, copy the `demo-production/` folder into OneDrive at
+`/Documents/Cowork/skills/demo-production/`. Cowork discovers skills in that folder at the
+start of each session. See Microsoft's [Cowork skill instructions](https://learn.microsoft.com/microsoft-365/copilot/cowork/use-cowork#cowork-skills)
+for current limits and sharing options.
+
+Cowork can use this skill to research an audience, draft the narrative, plan scenes, and
+produce presenter-ready content. The reference capture pipeline still needs a coding
+environment with local filesystem access, Node.js, browser automation, and (for video or
+voice) ffmpeg and Azure AI Speech. Cowork cannot run those local tools from the skill alone;
+use VS Code/GitHub Copilot or Claude Code for the capture-narrate-build steps, or provide the
+required capabilities through an approved Cowork plugin or connector.
+
 ## Using it
 
 Ask for the thing you want, not for the skill. You never name it or invoke it — your assistant
@@ -142,6 +178,10 @@ matches your request against what the skill says it is for.
 - "add a lightning cut to our existing walkthrough"
 - "the narration on our demo sounds stilted, fix it"
 - "add captions and a transcript to the demo"
+
+In Cowork, prompts such as "write a technical-audience demo narrative for this product" or
+"turn these product materials into a presenter script" use the parts of the skill that do not
+require local build tools. Custom skills are not currently supported in Cowork on mobile.
 
 **What happens next.** The assistant works out what it is looking at, gets it running, and
 asks you only what it genuinely cannot determine — usually which audience the demo is for.
